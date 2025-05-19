@@ -1,8 +1,6 @@
 #ifndef GET_FUNC_LIST_HPP
 #define GET_FUNC_LIST_HPP
 
-#include <set>
-
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/FrontendAction.h"
@@ -34,7 +32,7 @@ class FunctionASTConsumer : public clang::ASTConsumer {
 
 class FunctionFrontendAction : public clang::ASTFrontendAction {
  public:
-  FunctionFrontendAction(const char *src_path);
+  FunctionFrontendAction();
 
   unique_ptr<clang::ASTConsumer> CreateASTConsumer(
       clang::CompilerInstance &CI, llvm::StringRef InFile) override;
@@ -42,7 +40,6 @@ class FunctionFrontendAction : public clang::ASTFrontendAction {
   void ExecuteAction() override;
 
  private:
-  const char *src_path_;
 };
 
 #endif

@@ -31,12 +31,21 @@ DEPS := $(patsubst src/%.cpp, build/%.d, $(SRCS))
 
 .PHONY: all clean build_dir
 
-all: build/get_func_list
+all: build/get_func_list build/get_func_src
 
-build/get_func_list: build/get_func_list.o | build_dir
+build/get_func_list: build/get_func_list.o build/util.o | build_dir
 	$(CXX) -o $@ $^ $(LLVM_LDFLAGS)
 
 build/get_func_list.o: src/get_func_list.cpp | build_dir
+	$(CXX) $(LLVM_CXXFLAGS) -c -o $@ $^ -I include
+
+build/get_func_src: build/get_func_src.o build/util.o | build_dir
+	$(CXX) -o $@ $^ $(LLVM_LDFLAGS)
+
+build/get_func_src.o: src/get_func_src.cpp | build_dir
+	$(CXX) $(LLVM_CXXFLAGS) -c -o $@ $^ -I include
+
+build/util.o: src/util.cpp | build_dir
 	$(CXX) $(LLVM_CXXFLAGS) -c -o $@ $^ -I include
 
 build_dir:

@@ -6,6 +6,7 @@
 
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Tooling/Tooling.h"
+#include "util.hpp"
 
 ///////////////////////
 // FunctionVisitor class
@@ -30,7 +31,7 @@ bool FunctionVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
   const char *file_name = file_entry->getName().data();
   if (strcmp(file_name, src_path_) != 0) { return true; }
 
-  std::cerr << func_name << "\n";
+  std::cout << func_name << "\n";
 
   return true;
 }
@@ -52,14 +53,17 @@ void FunctionASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
 // FunctionFrontendAction class
 ////////////////////////
 
-FunctionFrontendAction::FunctionFrontendAction(const char *src_path)
-    : src_path_(src_path) {
+FunctionFrontendAction::FunctionFrontendAction() {
 }
 
 unique_ptr<clang::ASTConsumer> FunctionFrontendAction::CreateASTConsumer(
     clang::CompilerInstance &CI, llvm::StringRef InFile) {
-  clang::SourceManager &source_manager = CI.getSourceManager();
-  return make_unique<FunctionASTConsumer>(source_manager, src_path_);
+  clang::SourceManager   &source_manager = CI.getSourceManager();
+  const clang::FileID     main_file_id = source_manager.getMainFileID();
+  const clang::FileEntry *main_file_entry =
+      source_manager.getFileEntryForID(main_file_id);
+  const char *main_file_name = main_file_entry->getName().data();
+  return make_unique<FunctionASTConsumer>(source_manager, main_file_name);
 }
 
 void FunctionFrontendAction::ExecuteAction() {
@@ -71,65 +75,16 @@ void FunctionFrontendAction::ExecuteAction() {
 // main logic
 /////////////////////////
 
-// Execute clang and get the system include paths
-// and add them to the compile args
-static void add_system_include_paths(vector<string> &compile_args) {
-  const char *cmd = "clang -E -x c++ - -v < /dev/null 2>&1";
-  FILE       *fp = popen(cmd, "r");
-  if (fp == NULL) {
-    std::cerr << "Error: could not run command: " << cmd << "\n";
-    return;
-  }
-
-  char buffer[256];
-  bool found_include_start = false;
-  while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-    string line(buffer);
-    if (found_include_start) {
-      if (line.find("End of search list.") != string::npos) {
-        found_include_start = false;
-        continue;
-      }
-
-      if (line.find("starts here") != string::npos) { continue; }
-
-      if (line.empty()) { continue; }
-
-      if (line[0] == ' ') { line = line.substr(1); }
-
-      const size_t len = line.length();
-
-      if (line[len - 1] == '\n') { line = line.substr(0, len - 1); }
-
-      compile_args.push_back("-isystem");
-      compile_args.push_back(line);
-      continue;
-    }
-
-    if (line.find("#include <...> search starts here") != string::npos) {
-      found_include_start = true;
-      continue;
-    }
-
-    if (line.find("#include \"...\" search starts here") != string::npos) {
-      found_include_start = true;
-      continue;
-    }
-  }
-  pclose(fp);
-  return;
-}
-
 int main(int argc, const char **argv) {
-  if (argc < 1) {
+  if (argc < 2) {
     std::cerr << "Usage: " << argv[0]
               << " <source-file> -- [<compile args> ...]\n";
     return 1;
   }
 
-  const string   src_path = argv[1];
+  const char    *src_path = argv[1];
   vector<string> compile_args;
-  if (argc > 2) {
+  if (argc > 3) {
     if (strncmp(argv[2], "--", 2) != 0) {
       std::cerr << "Error: expected '--' after source file.\n";
       return 1;
@@ -161,9 +116,9 @@ int main(int argc, const char **argv) {
   src_buffer << src_file.rdbuf();
   src_file.close();
 
-  clang::tooling::runToolOnCodeWithArgs(
-      make_unique<FunctionFrontendAction>(argv[1]), src_buffer.str(),
-      compile_args, src_path);
+  clang::tooling::runToolOnCodeWithArgs(make_unique<FunctionFrontendAction>(),
+                                        src_buffer.str(), compile_args,
+                                        src_path);
 
   return 0;
 }

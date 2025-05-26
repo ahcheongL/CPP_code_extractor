@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+
+import os, sys
+import shutil
+import subprocess
+import time
+
+
+def is_executable(path):
+    if shutil.which(path):
+        return True
+
+    return os.path.isfile(path) and os.access(path, os.X_OK)
+
+
+def write_args_to_file(args):
+    if "CL_OUTPUT" in os.environ:
+        output_path = os.environ["CL_OUTPUT"]
+    else:
+        print("CL_OUTPUT not set, proceed with default output path: /tmp/cl_output.txt")
+        output_path = "/tmp/cl_output.txt"
+
+    opened = False
+    while not opened:
+        try:
+            f1 = open(output_path, "a")
+            opened = True
+        except:
+            time.sleep(0.1)
+    cwd = os.getcwd()
+
+    f1.write(cwd + " " + " ".join(args) + "\n")
+    f1.close()
+
+
+def main(argv):
+
+    if len(argv) < 2:
+        print("Usage: cxx_wrapper <compile commands> ...")
+        print(
+            "set an environment variable REAL_CXX to the real compiler name (e.g., g++, clang++)"
+        )
+        print("set an environment variable CL_OUTPUT to the output file path")
+        print("default output path is /tmp/cl_output.txt")
+        sys.exit(1)
+
+    cxx = "clang++"
+
+    if "REAL_CXX" in os.environ:
+        cxx = os.environ["REAL_CXX"]
+
+    if not is_executable(cxx):
+        print(f"Error: {cxx} is not an executable file or not found in PATH.")
+        return 1
+
+    write_args_to_file(argv[1:])
+
+    args = [cxx] + argv[1:]
+
+    process = subprocess.run(args)
+    return process.returncode
+
+
+if __name__ == "__main__":
+    exit(main(sys.argv))

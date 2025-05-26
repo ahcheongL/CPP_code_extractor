@@ -18,6 +18,11 @@ FunctionVisitor::FunctionVisitor(clang::SourceManager &src_manager,
 }
 
 bool FunctionVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
+#if PRINT_DEBUG == 1
+  std::cerr << "Visiting function "
+            << FuncDecl->getNameInfo().getName().getAsString() << "\n";
+#endif
+
   if (!FuncDecl->isThisDeclarationADefinition()) { return true; }
 
   string func_name = FuncDecl->getNameInfo().getName().getAsString();
@@ -26,10 +31,22 @@ bool FunctionVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
   // get filename
   const clang::FileEntry *file_entry =
       src_manager_.getFileEntryForID(src_manager_.getFileID(loc));
-  if (file_entry == nullptr) { return true; }
+  if (file_entry == nullptr) {
+#if PRINT_DEBUG == 1
+    std::cerr << "Error: file entry is null for function " << func_name << "\n";
+#endif
+    return true;
+  }
 
   const char *file_name = file_entry->getName().data();
-  if (strcmp(file_name, src_path_) != 0) { return true; }
+
+  if (strcmp(file_name, src_path_) != 0) {
+#if PRINT_DEBUG == 1
+    std::cerr << "Skipping function " << func_name << " in file " << file_name
+              << "\n";
+#endif
+    return true;
+  }
 
   std::cout << func_name << "\n";
 

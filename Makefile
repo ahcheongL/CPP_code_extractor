@@ -7,8 +7,8 @@ LLVM_MAJOR = $(shell llvm-config --version 2>/dev/null | sed 's/\..*//' )
 LLVM_MINOR = $(shell llvm-config --version 2>/dev/null | sed 's/.*\.//' | sed 's/git//' | sed 's/svn//' | sed 's/ .*//' )
 $(info Detected LLVM VERSION : $(LLVMVER))
 
-CC := clang
-CXX := clang++
+CC ?= clang
+CXX ?= clang++
 AR := ar
 
 LLVM_CXXFLAGS := `llvm-config --cxxflags` -fPIC -g -DLLVM_MAJOR=$(LLVM_MAJOR) -MMD -MP
@@ -38,7 +38,7 @@ DEPS := $(patsubst src/%.cpp, build/%.d, $(SRCS))
 
 .PHONY: all clean build_dir
 
-all: build/get_func_list build/get_func_src
+all: build/get_func_list build/get_func_src build/get_all_func_src
 
 build/get_func_list: build/get_func_list.o build/util.o | build_dir
 	$(CXX) -o $@ $^ $(LLVM_LDFLAGS)
@@ -53,6 +53,12 @@ build/get_func_src.o: src/get_func_src.cpp | build_dir
 	$(CXX) $(LLVM_CXXFLAGS) -c -o $@ $^ -I include
 
 build/util.o: src/util.cpp | build_dir
+	$(CXX) $(LLVM_CXXFLAGS) -c -o $@ $^ -I include
+
+build/get_all_func_src: build/get_all_func_src.o build/util.o | build_dir
+	$(CXX) -o $@ $^ $(LLVM_LDFLAGS) -ljsoncpp
+
+build/get_all_func_src.o: src/get_all_func_src.cpp | build_dir
 	$(CXX) $(LLVM_CXXFLAGS) -c -o $@ $^ -I include
 
 build_dir:

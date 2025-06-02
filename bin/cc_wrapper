@@ -17,7 +17,6 @@ def write_args_to_file(args):
     if "CL_OUTPUT" in os.environ:
         output_path = os.environ["CL_OUTPUT"]
     else:
-        print("CL_OUTPUT not set, proceed with default output path: /tmp/cl_output.txt")
         output_path = "/tmp/cl_output.txt"
 
     opened = False

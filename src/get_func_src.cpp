@@ -7,7 +7,7 @@
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Lex/Lexer.h"
 #include "clang/Tooling/Tooling.h"
-#include "util.hpp"
+#include "cpp_code_extractor_util.hpp"
 
 // /////////////////////////
 // FuncSrcVisitor class

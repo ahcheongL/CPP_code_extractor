@@ -1,5 +1,5 @@
-#ifndef UTIL_HPP
-#define UTIL_HPP
+#ifndef CPP_CODE_EXTRACTOR_UTIL_HPP
+#define CPP_CODE_EXTRACTOR_UTIL_HPP
 
 #include <string>
 #include <vector>

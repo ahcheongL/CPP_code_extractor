@@ -7,8 +7,15 @@ LLVM_MAJOR = $(shell llvm-config --version 2>/dev/null | sed 's/\..*//' )
 LLVM_MINOR = $(shell llvm-config --version 2>/dev/null | sed 's/.*\.//' | sed 's/git//' | sed 's/svn//' | sed 's/ .*//' )
 $(info Detected LLVM VERSION : $(LLVMVER))
 
-CC ?= clang
-CXX ?= clang++
+
+ifeq ($(origin CC), default)
+	CC := clang
+endif
+
+ifeq ($(origin CXX), default)
+	CXX := clang++
+endif
+
 AR := ar
 
 LLVM_CXXFLAGS := `llvm-config --cxxflags` -fPIC -g -DLLVM_MAJOR=$(LLVM_MAJOR) -MMD -MP
@@ -40,22 +47,22 @@ DEPS := $(patsubst src/%.cpp, build/%.d, $(SRCS))
 
 all: build/get_func_list build/get_func_src build/get_all_func_src
 
-build/get_func_list: build/get_func_list.o build/util.o | build_dir
+build/get_func_list: build/get_func_list.o build/cpp_code_extractor_util.o | build_dir
 	$(CXX) -o $@ $^ $(LLVM_LDFLAGS)
 
 build/get_func_list.o: src/get_func_list.cpp | build_dir
 	$(CXX) $(LLVM_CXXFLAGS) -c -o $@ $^ -I include
 
-build/get_func_src: build/get_func_src.o build/util.o | build_dir
+build/get_func_src: build/get_func_src.o build/cpp_code_extractor_util.o | build_dir
 	$(CXX) -o $@ $^ $(LLVM_LDFLAGS)
 
 build/get_func_src.o: src/get_func_src.cpp | build_dir
 	$(CXX) $(LLVM_CXXFLAGS) -c -o $@ $^ -I include
 
-build/util.o: src/util.cpp | build_dir
+build/cpp_code_extractor_util.o: src/cpp_code_extractor_util.cpp | build_dir
 	$(CXX) $(LLVM_CXXFLAGS) -c -o $@ $^ -I include
 
-build/get_all_func_src: build/get_all_func_src.o build/util.o | build_dir
+build/get_all_func_src: build/get_all_func_src.o build/cpp_code_extractor_util.o | build_dir
 	$(CXX) -o $@ $^ $(LLVM_LDFLAGS) -ljsoncpp
 
 build/get_all_func_src.o: src/get_all_func_src.cpp | build_dir

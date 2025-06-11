@@ -110,20 +110,7 @@ int main(int argc, const char **argv) {
   const string src_path = argv[1];
   const char  *output_filename = argv[2];
 
-  vector<string> compile_args;
-
-  if (argc > 4) {
-    if (strncmp(argv[3], "--", 2) != 0) {
-      std::cerr << "Error: expected '--' after func name.\n";
-      return 1;
-    }
-
-    for (int i = 4; i < argc; ++i) {
-      compile_args.push_back(argv[i]);
-    }
-  }
-
-  add_system_include_paths(compile_args);
+  const vector<string> compile_args = get_compile_args(argc, argv);
 
   ifstream src_file(src_path);
 

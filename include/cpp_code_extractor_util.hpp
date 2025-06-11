@@ -6,5 +6,5 @@
 
 using namespace std;
 
-void add_system_include_paths(vector<string> &compile_args);
+vector<string> get_compile_args(int argc, const char **argv);
 #endif

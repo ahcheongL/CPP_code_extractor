@@ -99,20 +99,8 @@ int main(int argc, const char **argv) {
     return 1;
   }
 
-  const char    *src_path = argv[1];
-  vector<string> compile_args;
-  if (argc > 3) {
-    if (strncmp(argv[2], "--", 2) != 0) {
-      std::cerr << "Error: expected '--' after source file.\n";
-      return 1;
-    }
-
-    for (int i = 3; i < argc; ++i) {
-      compile_args.push_back(argv[i]);
-    }
-  }
-
-  add_system_include_paths(compile_args);
+  const char          *src_path = argv[1];
+  const vector<string> compile_args = get_compile_args(argc, argv);
 
 #if PRINT_DEBUG == 1
   std::cerr << "Compile args:\n";

@@ -45,7 +45,7 @@ DEPS := $(patsubst src/%.cpp, build/%.d, $(SRCS))
 
 .PHONY: all clean build_dir
 
-all: build/get_func_list build/get_func_src build/get_all_func_src
+all: build/get_func_list build/get_func_src build/get_all_func_src build/libextract.a
 
 build/get_func_list: build/get_func_list.o build/cpp_code_extractor_util.o | build_dir
 	$(CXX) -o $@ $^ $(LLVM_LDFLAGS)
@@ -67,6 +67,9 @@ build/get_all_func_src: build/get_all_func_src.o build/cpp_code_extractor_util.o
 
 build/get_all_func_src.o: src/get_all_func_src.cpp | build_dir
 	$(CXX) $(LLVM_CXXFLAGS) -c -o $@ $^ -I include
+
+build/libextract.a: build/cpp_code_extractor_util.o | build_dir
+	$(AR) rcs $@ $^
 
 build_dir:
 	@mkdir -p build

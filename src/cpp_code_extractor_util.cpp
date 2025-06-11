@@ -1,10 +1,42 @@
 #include "cpp_code_extractor_util.hpp"
 
+#include <string.h>
+
 #include <iostream>
+
+static void add_system_include_paths(vector<string> &compile_args);
+
+// Assume argv contains "--" followed by compile arguments
+// If it does not, return an empty vector
+vector<string> get_compile_args(int argc, const char **argv) {
+  vector<string> result;
+
+  unsigned int idx = 0;
+
+  bool found_dash = false;
+
+  while (idx < argc && argv[idx] != nullptr) {
+    if (strcmp(argv[idx], "--") == 0) {
+      found_dash = true;
+      idx++;
+      break;
+    }
+    idx++;
+  }
+
+  while (idx < argc && argv[idx] != nullptr) {
+    result.push_back(argv[idx]);
+    idx++;
+  }
+
+  add_system_include_paths(result);
+
+  return result;
+}
 
 // Execute clang and get the system include paths
 // and add them to the compile args
-void add_system_include_paths(vector<string> &compile_args) {
+static void add_system_include_paths(vector<string> &compile_args) {
   const char *cmd = "clang -E -x c++ - -v < /dev/null 2>&1";
   FILE       *fp = popen(cmd, "r");
   if (fp == NULL) {

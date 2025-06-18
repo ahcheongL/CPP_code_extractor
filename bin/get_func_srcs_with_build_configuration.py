@@ -50,6 +50,10 @@ def read_compile_commands(file_name):
             if src_file == "conftest.c":
                 continue
 
+            if "CMakeC" in src_file:
+                # Skip CMake generated files
+                continue
+
             command = command[:src_file_idx] + command[src_file_idx + 1 :]
             command = " ".join(command)
 
@@ -111,6 +115,9 @@ def main(argv):
 
         with open(temp_output_path, "r") as f:
             func_srcs = json.load(f)
+
+        if func_srcs is None:
+            func_srcs = dict()
 
         result[command.src_file] = func_srcs
         remove_file(temp_output_path)

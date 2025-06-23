@@ -119,10 +119,41 @@ def main(argv):
         if func_srcs is None:
             func_srcs = dict()
 
-        result[command.src_file] = func_srcs
+        result[command.src_file] = dict()
+        result[command.src_file]["src"] = func_srcs
         remove_file(temp_output_path)
 
-    num_funcs = sum(len(v) for v in result.values())
+        cmd = [
+            "get_callgraph",
+            command.src_file,
+            temp_output_path,
+            "--",
+        ] + command.command.split(" ")
+
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+        )
+
+        process.communicate()
+        result[command.src_file]["callgraph"] = dict()
+
+        if not os.path.isfile(temp_output_path):
+            print(f"Error: Output file {temp_output_path} not found.")
+            continue
+
+        with open(temp_output_path, "r") as f:
+            callgraph = json.load(f)
+
+        if callgraph is None:
+            callgraph = dict()
+
+        result[command.src_file]["callgraph"] = callgraph
+        remove_file(temp_output_path)
+
+    num_funcs = sum(len(files["src"]) for files in result.values())
     print(f"Found {len(result)} source files with {num_funcs} functions.")
 
     with open(out_file_name, "w") as f:

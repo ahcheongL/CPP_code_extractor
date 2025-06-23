@@ -80,14 +80,14 @@ Example:
 ./build/get_all_func_src ./src/get_func_list.cpp out.json -- -I include `llvm-config --cxxflags`
 ```
 
-### 5. `get_func_srcs_with_build_configuration.py`
+### 5. `get_code_data.py`
 
 Input: A build configuration file (e.g., `/tmp/cl_output.txt`)
 Output: A json file of function source code
 
 Usage:
 ```
-./bin/get_func_srcs_with_build_configuration.py <compile_commands.txt> <out.json>
+./bin/get_code_data.py <compile_commands.txt> <out.json>
 ```
 
 ### 6. `get_callgraph`

@@ -89,3 +89,15 @@ Usage:
 ```
 ./bin/get_func_srcs_with_build_configuration.py <compile_commands.txt> <out.json>
 ```
+
+### 6. `get_callgraph`
+
+Usage:
+```
+./build/get_callgraph <src_file_path> <output_json> -- [<compile args> ...]
+```
+
+Example:
+```
+./build/get_callgraph ./src/get_func_list.cpp out.json -- -I include `llvm-config --cxxflags`
+```

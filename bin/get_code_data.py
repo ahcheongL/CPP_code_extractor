@@ -85,6 +85,8 @@ def main(argv):
     add_build_dir_to_path()
 
     result = dict()
+    result["src"] = dict()
+    result["callgraph"] = dict()
 
     for command in tqdm.tqdm(commands):
         temp_output = tempfile.NamedTemporaryFile(delete=False)
@@ -113,14 +115,16 @@ def main(argv):
             print(f"Error: Output file {temp_output_path} not found.")
             continue
 
-        with open(temp_output_path, "r") as f:
-            func_srcs = json.load(f)
+        try:
+            with open(temp_output_path, "r") as f:
+                func_srcs = json.load(f)
+        except json.JSONDecodeError:
+            continue
 
         if func_srcs is None:
             func_srcs = dict()
 
-        result[command.src_file] = dict()
-        result[command.src_file]["src"] = func_srcs
+        result["src"][command.src_file] = func_srcs
         remove_file(temp_output_path)
 
         cmd = [
@@ -138,23 +142,39 @@ def main(argv):
         )
 
         process.communicate()
-        result[command.src_file]["callgraph"] = dict()
 
         if not os.path.isfile(temp_output_path):
             print(f"Error: Output file {temp_output_path} not found.")
             continue
 
-        with open(temp_output_path, "r") as f:
-            callgraph = json.load(f)
+        try:
+            with open(temp_output_path, "r") as f:
+                callgraph = json.load(f)
+        except json.JSONDecodeError:
+            continue
 
         if callgraph is None:
             callgraph = dict()
 
-        result[command.src_file]["callgraph"] = callgraph
+        for func_name in callgraph:
+            if func_name not in result["callgraph"]:
+                result["callgraph"][func_name] = dict()
+                # There can be multiple functions with the same name in different files
+                # but let's keep it simple for now
+                result["callgraph"][func_name]["callees"] = []
+                result["callgraph"][func_name]["callers"] = []
+
+            for callee in callgraph[func_name]["callees"]:
+                if callee not in result["callgraph"][func_name]["callees"]:
+                    result["callgraph"][func_name]["callees"].append(callee)
+            for caller in callgraph[func_name]["callers"]:
+                if caller not in result["callgraph"][func_name]["callers"]:
+                    result["callgraph"][func_name]["callers"].append(caller)
+
         remove_file(temp_output_path)
 
-    num_funcs = sum(len(files["src"]) for files in result.values())
-    print(f"Found {len(result)} source files with {num_funcs} functions.")
+    num_funcs = sum(len(result["src"][file]) for file in result["src"].keys())
+    print(f"Found {len(result['src'])} source files with {num_funcs} functions.")
 
     with open(out_file_name, "w") as f:
         json.dump(result, f, indent=4)

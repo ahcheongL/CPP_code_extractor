@@ -161,22 +161,22 @@ bool CallgraphVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
 void CallgraphVisitor::add_callee(const string &caller, const string &callee) {
   if (!output_json_.isMember(caller)) {
     output_json_[caller] = Json::Value(Json::objectValue);
-    output_json_[caller]["callee"] = Json::Value(Json::arrayValue);
-    output_json_[caller]["caller"] = Json::Value(Json::arrayValue);
+    output_json_[caller]["callees"] = Json::Value(Json::arrayValue);
+    output_json_[caller]["callers"] = Json::Value(Json::arrayValue);
   }
 
-  Json::Value &callees = output_json_[caller]["callee"];
+  Json::Value &callees = output_json_[caller]["callees"];
 
   if (!json_has_val_in_array(callees, callee)) { callees.append(callee); }
 
   // Add the caller to the callee's caller list
   if (!output_json_.isMember(callee)) {
     output_json_[callee] = Json::Value(Json::objectValue);
-    output_json_[callee]["callee"] = Json::Value(Json::arrayValue);
-    output_json_[callee]["caller"] = Json::Value(Json::arrayValue);
+    output_json_[callee]["callees"] = Json::Value(Json::arrayValue);
+    output_json_[callee]["callers"] = Json::Value(Json::arrayValue);
   }
 
-  Json::Value &callee_callers = output_json_[callee]["caller"];
+  Json::Value &callee_callers = output_json_[callee]["callers"];
   if (!json_has_val_in_array(callee_callers, caller)) {
     callee_callers.append(caller);
   }

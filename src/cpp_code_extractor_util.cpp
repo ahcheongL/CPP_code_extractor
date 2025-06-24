@@ -13,11 +13,8 @@ vector<string> get_compile_args(int argc, const char **argv) {
 
   unsigned int idx = 0;
 
-  bool found_dash = false;
-
   while (idx < argc && argv[idx] != nullptr) {
     if (strcmp(argv[idx], "--") == 0) {
-      found_dash = true;
       idx++;
       break;
     }

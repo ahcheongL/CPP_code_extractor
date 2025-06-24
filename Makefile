@@ -19,15 +19,12 @@ endif
 AR := ar
 
 LLVM_CXXFLAGS := `llvm-config --cxxflags` -fPIC -g -DLLVM_MAJOR=$(LLVM_MAJOR) -MMD -MP
-RUNTIME_CXXFLAGS := -g -fPIC -MMD -MP -fvisibility=hidden
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
 	LLVM_CXXFLAGS += -O0 -ggdb -DPRINT_DEBUG=1
-	RUNTIME_CXXFLAGS += -O0 -ggdb -D_GLIBCXX_DEBUG -DPRINT_DEBUG=1
 else
 	LLVM_CXXFLAGS += -O2
-	RUNTIME_CXXFLAGS += -O2
 endif
 
 CLANG_LIBS = -lclang-cpp
@@ -45,33 +42,24 @@ DEPS := $(patsubst src/%.cpp, build/%.d, $(SRCS))
 
 .PHONY: all clean build_dir
 
-all: build/get_func_list build/get_func_src build/get_all_func_src build/libextract.a build/get_callgraph
+all: build/get_func_list build/get_func_src build/get_all_func_src build/libextract.a build/get_callgraph build/parse_cpp
 
 build/get_func_list: build/get_func_list.o build/cpp_code_extractor_util.o | build_dir
 	$(CXX) -o $@ $^ $(LLVM_LDFLAGS)
 
-build/get_func_list.o: src/get_func_list.cpp | build_dir
-	$(CXX) $(LLVM_CXXFLAGS) -c -o $@ $^ -I include
+build/parse_cpp: build/parse_cpp.o build/cpp_code_extractor_util.o | build_dir
+	$(CXX) -o $@ $^ $(LLVM_LDFLAGS) -ljsoncpp
 
 build/get_func_src: build/get_func_src.o build/cpp_code_extractor_util.o | build_dir
 	$(CXX) -o $@ $^ $(LLVM_LDFLAGS) 
 
-build/get_func_src.o: src/get_func_src.cpp | build_dir
-	$(CXX) $(LLVM_CXXFLAGS) -c -o $@ $^ -I include
-
 build/get_callgraph: build/get_callgraph.o build/cpp_code_extractor_util.o | build_dir
 	$(CXX) -o $@ $^ $(LLVM_LDFLAGS) -ljsoncpp
-
-build/get_callgraph.o: src/get_callgraph.cpp | build_dir
-	$(CXX) $(LLVM_CXXFLAGS) -c -o $@ $^ -I include
-
-build/cpp_code_extractor_util.o: src/cpp_code_extractor_util.cpp | build_dir
-	$(CXX) $(LLVM_CXXFLAGS) -c -o $@ $^ -I include
 
 build/get_all_func_src: build/get_all_func_src.o build/cpp_code_extractor_util.o | build_dir
 	$(CXX) -o $@ $^ $(LLVM_LDFLAGS) -ljsoncpp
 
-build/get_all_func_src.o: src/get_all_func_src.cpp | build_dir
+build/%.o: src/%.cpp | build_dir
 	$(CXX) $(LLVM_CXXFLAGS) -c -o $@ $^ -I include
 
 build/libextract.a: build/cpp_code_extractor_util.o | build_dir

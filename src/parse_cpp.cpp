@@ -44,7 +44,9 @@ void ParseASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
 
     clang::SourceLocation start_loc = named_decl->getBeginLoc();
     clang::SourceLocation end_loc = named_decl->getEndLoc();
-    clang::SourceRange    range(start_loc, end_loc);
+    end_loc =
+        clang::Lexer::getLocForEndOfToken(end_loc, 0, src_manager_, lang_opts_);
+    clang::SourceRange range(start_loc, end_loc);
 
     const string src_code = clang::Lexer::getSourceText(
                                 clang::CharSourceRange::getTokenRange(range),
@@ -53,7 +55,7 @@ void ParseASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
 
     Json::Value decl_elem = Json::Value(Json::objectValue);
     decl_elem["name"] = decl_name;
-    decl_elem["source"] = src_code;
+    decl_elem["source"] = src_code + "\n";
     output_json_.append(decl_elem);
   }
   return;

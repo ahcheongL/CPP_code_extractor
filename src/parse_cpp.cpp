@@ -55,7 +55,7 @@ void ParseASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
 
     Json::Value decl_elem = Json::Value(Json::objectValue);
     decl_elem["name"] = decl_name;
-    decl_elem["source"] = src_code + "\n";
+    decl_elem["source"] = src_code;
     output_json_.append(decl_elem);
   }
   return;

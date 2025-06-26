@@ -53,9 +53,15 @@ void ParseASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
                                 src_manager_, lang_opts_)
                                 .str();
 
+    const bool is_func_def = llvm::isa<clang::FunctionDecl>(named_decl) &&
+                             llvm::cast<clang::FunctionDecl>(named_decl)
+                                 ->isThisDeclarationADefinition();
+
     Json::Value decl_elem = Json::Value(Json::objectValue);
     decl_elem["name"] = decl_name;
     decl_elem["source"] = src_code;
+    decl_elem["is_func_def"] = is_func_def;
+
     output_json_.append(decl_elem);
   }
   return;

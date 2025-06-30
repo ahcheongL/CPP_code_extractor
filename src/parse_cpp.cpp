@@ -30,7 +30,6 @@ void ParseASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
 
     clang::NamedDecl *named_decl = llvm::dyn_cast<clang::NamedDecl>(decl);
 
-    //   Visitor.TraverseDecl(named_decl);
     clang::SourceLocation   loc = named_decl->getLocation();
     const clang::FileEntry *file_entry =
         src_manager_.getFileEntryForID(src_manager_.getFileID(loc));
@@ -40,13 +39,14 @@ void ParseASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
 
     if (strcmp(file_name, src_path_) != 0) { continue; }
 
+    // named_decl->print(llvm::errs());
+    // llvm::errs() << "\n";
+
     const string decl_name = named_decl->getNameAsString();
 
     clang::SourceLocation start_loc = named_decl->getBeginLoc();
     clang::SourceLocation end_loc = named_decl->getEndLoc();
-    end_loc =
-        clang::Lexer::getLocForEndOfToken(end_loc, 0, src_manager_, lang_opts_);
-    clang::SourceRange range(start_loc, end_loc);
+    clang::SourceRange    range(start_loc, end_loc);
 
     const string src_code = clang::Lexer::getSourceText(
                                 clang::CharSourceRange::getTokenRange(range),
@@ -59,8 +59,13 @@ void ParseASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
 
     Json::Value decl_elem = Json::Value(Json::objectValue);
     decl_elem["name"] = decl_name;
-    decl_elem["source"] = src_code;
     decl_elem["is_func_def"] = is_func_def;
+
+    if (!is_func_def) {
+      decl_elem["source"] = src_code + ";";
+    } else {
+      decl_elem["source"] = src_code;
+    }
 
     output_json_.append(decl_elem);
   }

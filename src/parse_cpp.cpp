@@ -39,7 +39,7 @@ void ParseASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
 
     const char *file_name = file_entry->getName().data();
 
-    const bool is_in_target_file = strcmp(file_name, src_path_) != 0;
+    const bool is_in_target_file = strcmp(file_name, src_path_) == 0;
 
     const string decl_name = named_decl->getNameAsString();
 

@@ -104,8 +104,9 @@ void ParseFrontendAction::ExecuteAction() {
 // /////////////////////////
 
 int main(int argc, const char **argv) {
-  if (argc != 3) {
-    std::cerr << "Usage: " << argv[0] << " <source-file> <out.json>\n";
+  if (argc < 3) {
+    std::cerr << "Usage: " << argv[0]
+              << " <source-file> <out.json> -- [<compile args> ...]\n";
     return 1;
   }
 

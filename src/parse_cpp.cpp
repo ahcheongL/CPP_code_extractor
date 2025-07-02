@@ -35,14 +35,16 @@ void ParseASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
         src_manager_.getFileEntryForID(src_manager_.getFileID(loc));
     if (file_entry == nullptr) { continue; }
 
+    Json::Value decl_elem = Json::Value(Json::objectValue);
+
     const char *file_name = file_entry->getName().data();
 
-    if (strcmp(file_name, src_path_) != 0) { continue; }
-
-    // named_decl->print(llvm::errs());
-    // llvm::errs() << "\n";
+    const bool is_in_target_file = strcmp(file_name, src_path_) != 0;
 
     const string decl_name = named_decl->getNameAsString();
+
+    decl_elem["name"] = decl_name;
+    decl_elem["is_in_target_file"] = is_in_target_file;
 
     clang::SourceLocation start_loc = named_decl->getBeginLoc();
     clang::SourceLocation end_loc = named_decl->getEndLoc();
@@ -53,12 +55,11 @@ void ParseASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
                                 src_manager_, lang_opts_)
                                 .str();
 
-    const bool is_func_def = llvm::isa<clang::FunctionDecl>(named_decl) &&
+    const bool is_func_def = is_in_target_file &&
+                             llvm::isa<clang::FunctionDecl>(named_decl) &&
                              llvm::cast<clang::FunctionDecl>(named_decl)
                                  ->isThisDeclarationADefinition();
 
-    Json::Value decl_elem = Json::Value(Json::objectValue);
-    decl_elem["name"] = decl_name;
     decl_elem["is_func_def"] = is_func_def;
 
     if (!is_func_def) {

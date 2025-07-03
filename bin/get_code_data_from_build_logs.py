@@ -47,11 +47,14 @@ def read_compile_commands(file_name):
 
             src_file = command[src_file_idx]
 
-            if src_file == "conftest.c":
+            if "conftest" in src_file:
                 continue
 
             if "CMakeC" in src_file:
                 # Skip CMake generated files
+                continue
+            if "TryCompile" in working_dir:
+                # Skip CMake TryCompile directories
                 continue
 
             command = command[:src_file_idx] + command[src_file_idx + 1 :]

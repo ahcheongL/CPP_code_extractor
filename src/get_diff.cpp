@@ -1,7 +1,5 @@
 #include "get_diff.hpp"
 
-#include <jsoncpp/json/json.h>
-
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -132,7 +130,7 @@ bool get_diff(clang::diff::SyntaxTree &ST1, clang::diff::SyntaxTree &ST2) {
 int main(int argc, const char **argv) {
   if (argc < 4) {
     cerr << "Usage: " << argv[0]
-         << " <source-file1> <source-file2> <out.json> -- [<compile args> "
+         << " <source-file1> <source-file2> <output.txt> -- [<compile args> "
             "...]\n";
     cerr << "Assumes both source files uses the same "
             "compile arguments.\n";
@@ -156,17 +154,18 @@ int main(int argc, const char **argv) {
 
   const bool has_diff = get_diff(ST1, ST2);
 
-  Json::Value output_json;
-
   ofstream output_file(output_filename);
   if (!output_file.is_open()) {
     cerr << "Error: could not open output file " << output_filename << "\n";
     return 1;
   }
 
-  output_json["has_diff"] = has_diff;
+  if (has_diff) {
+    output_file << "True";
+  } else {
+    output_file << "False";
+  }
 
-  output_file << output_json.toStyledString();
   output_file.close();
 
   llvm::outs() << "Output written to " << output_filename << "\n";

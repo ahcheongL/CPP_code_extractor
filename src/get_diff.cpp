@@ -32,13 +32,11 @@ class DummyConsumer : public clang::ASTConsumer {
 
 unique_ptr<clang::CompilerInstance> createCompilerInstance(
     const string &filename, const vector<string> &args) {
-  llvm::errs() << "Creating CompilerInstance for file: " << filename << "\n";
-
   clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagOpts =
       new clang::DiagnosticOptions();
 
   auto diagPrinter =
-      new clang::TextDiagnosticPrinter(llvm::errs(), diagOpts.get());
+      new clang::TextDiagnosticPrinter(llvm::nulls(), diagOpts.get());
 
   clang::IntrusiveRefCntPtr<llvm::vfs::FileSystem> vfs =
       llvm::vfs::getRealFileSystem();
@@ -108,9 +106,6 @@ unique_ptr<clang::CompilerInstance> createCompilerInstance(
 }
 
 bool get_diff(clang::diff::SyntaxTree &ST1, clang::diff::SyntaxTree &ST2) {
-  llvm::outs() << "ST1 size: " << ST1.getSize() << "\n";
-  llvm::outs() << "ST2 size: " << ST2.getSize() << "\n";
-
   if (ST1.getSize() != ST2.getSize()) { return true; }
 
   clang::diff::ASTDiff diff(ST1, ST2, clang::diff::ComparisonOptions());

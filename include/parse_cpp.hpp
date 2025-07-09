@@ -11,15 +11,15 @@ using namespace std;
 class ParseASTConsumer : public clang::ASTConsumer {
  public:
   explicit ParseASTConsumer(clang::SourceManager &src_manager,
-                            clang::LangOptions &lang_opts, const char *src_path,
-                            Json::Value &output_json);
+                            clang::LangOptions   &lang_opts,
+                            llvm::StringRef src_path, Json::Value &output_json);
 
   void HandleTranslationUnit(clang::ASTContext &Context) override;
 
  private:
   clang::SourceManager &src_manager_;
   clang::LangOptions   &lang_opts_;
-  const char           *src_path_;
+  llvm::StringRef       src_path_;
   Json::Value          &output_json_;
 };
 

@@ -10,15 +10,15 @@ using namespace std;
 class FuncSrcVisitor : public clang::RecursiveASTVisitor<FuncSrcVisitor> {
  public:
   explicit FuncSrcVisitor(clang::SourceManager &src_manager,
-                          clang::LangOptions &lang_opts, const char *src_path,
-                          const char *target_func);
+                          clang::LangOptions   &lang_opts,
+                          llvm::StringRef src_path, const char *target_func);
 
   bool VisitFunctionDecl(clang::FunctionDecl *FuncDecl);
 
  private:
   clang::SourceManager &src_manager_;
   clang::LangOptions   &lang_opts_;
-  const char           *src_path_;
+  llvm::StringRef       src_path_;
   const char           *target_func_;
 };
 
@@ -26,7 +26,8 @@ class FuncSrcASTConsumer : public clang::ASTConsumer {
  public:
   explicit FuncSrcASTConsumer(clang::SourceManager &src_manager,
                               clang::LangOptions   &lang_opts,
-                              const char *src_path, const char *target_func);
+                              llvm::StringRef       src_path,
+                              const char           *target_func);
 
   void HandleTranslationUnit(clang::ASTContext &Context) override;
 

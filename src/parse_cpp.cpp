@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 
+#include "clang/AST/ASTContext.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Tooling/Tooling.h"
 #include "cpp_code_extractor_util.hpp"
@@ -13,7 +14,7 @@
 
 ParseASTConsumer::ParseASTConsumer(clang::SourceManager &src_manager,
                                    clang::LangOptions   &lang_opts,
-                                   const char           *src_path,
+                                   llvm::StringRef       src_path,
                                    Json::Value          &output_json)
     : src_manager_(src_manager),
       lang_opts_(lang_opts),
@@ -30,16 +31,12 @@ void ParseASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
 
     clang::NamedDecl *named_decl = llvm::dyn_cast<clang::NamedDecl>(decl);
 
-    clang::SourceLocation   loc = named_decl->getLocation();
-    const clang::FileEntry *file_entry =
-        src_manager_.getFileEntryForID(src_manager_.getFileID(loc));
-    if (file_entry == nullptr) { continue; }
+    clang::SourceLocation loc = named_decl->getLocation();
+    llvm::StringRef       file_name = src_manager_.getFilename(loc);
 
     Json::Value decl_elem = Json::Value(Json::objectValue);
 
-    const char *file_name = file_entry->getName().data();
-
-    const bool is_in_target_file = strcmp(file_name, src_path_) == 0;
+    const bool is_in_target_file = file_name == src_path_;
 
     const string decl_name = named_decl->getNameAsString();
 
@@ -83,14 +80,23 @@ ParseFrontendAction::ParseFrontendAction(Json::Value &output_json)
 
 std::unique_ptr<clang::ASTConsumer> ParseFrontendAction::CreateASTConsumer(
     clang::CompilerInstance &CI, llvm::StringRef InFile) {
-  clang::SourceManager &src_manager = CI.getSourceManager();
-  clang::LangOptions   &lang_opts = CI.getLangOpts();
-  const char           *main_file_name =
-      src_manager.getFileEntryForID(src_manager.getMainFileID())
-          ->getName()
-          .data();
+  clang::SourceManager &source_manager = CI.getSourceManager();
+  const clang::FileID   main_file_id = source_manager.getMainFileID();
 
-  return std::make_unique<ParseASTConsumer>(src_manager, lang_opts,
+  clang::OptionalFileEntryRef main_file_ref =
+      source_manager.getFileEntryRefForID(main_file_id);
+
+  if (!main_file_ref) {
+    llvm::errs() << "Error: Main file entry not found for ID: "
+                 << main_file_id.getHashValue() << "\n";
+    return nullptr;
+  }
+
+  llvm::StringRef main_file_name = main_file_ref->getName();
+
+  clang::LangOptions &lang_opts = CI.getLangOpts();
+
+  return std::make_unique<ParseASTConsumer>(source_manager, lang_opts,
                                             main_file_name, output_json_);
 }
 

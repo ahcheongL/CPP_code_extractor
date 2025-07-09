@@ -15,7 +15,7 @@
 
 AllFuncSrcVisitor::AllFuncSrcVisitor(clang::SourceManager &src_manager,
                                      clang::LangOptions   &lang_opts,
-                                     const char           *src_path,
+                                     llvm::StringRef       src_path,
                                      Json::Value          &output_json)
     : src_manager_(src_manager),
       lang_opts_(lang_opts),
@@ -29,15 +29,9 @@ bool AllFuncSrcVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
   string func_name = FuncDecl->getNameInfo().getName().getAsString();
 
   clang::SourceLocation loc = FuncDecl->getLocation();
+  llvm::StringRef       file_name = src_manager_.getFilename(loc);
 
-  // get filename
-  const clang::FileEntry *file_entry =
-      src_manager_.getFileEntryForID(src_manager_.getFileID(loc));
-  if (file_entry == nullptr) { return true; }
-
-  const char *file_name = file_entry->getName().data();
-
-  if (strcmp(file_name, src_path_) != 0) { return true; }
+  if (file_name != src_path_) { return true; }
 
   // get function source code
 
@@ -61,7 +55,7 @@ bool AllFuncSrcVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
 
 AllFuncSrcASTConsumer::AllFuncSrcASTConsumer(clang::SourceManager &src_manager,
                                              clang::LangOptions   &lang_opts,
-                                             const char           *src_path,
+                                             llvm::StringRef       src_path,
                                              Json::Value          &output_json)
     : Visitor(src_manager, lang_opts, src_path, output_json) {
 }
@@ -79,11 +73,19 @@ AllFuncSrcFrontendAction::AllFuncSrcFrontendAction(Json::Value &output_json)
 }
 unique_ptr<clang::ASTConsumer> AllFuncSrcFrontendAction::CreateASTConsumer(
     clang::CompilerInstance &CI, llvm::StringRef InFile) {
-  clang::SourceManager   &source_manager = CI.getSourceManager();
-  const clang::FileID     main_file_id = source_manager.getMainFileID();
-  const clang::FileEntry *main_file_entry =
-      source_manager.getFileEntryForID(main_file_id);
-  const char *main_file_name = main_file_entry->getName().data();
+  clang::SourceManager &source_manager = CI.getSourceManager();
+  const clang::FileID   main_file_id = source_manager.getMainFileID();
+
+  clang::OptionalFileEntryRef main_file_ref =
+      source_manager.getFileEntryRefForID(main_file_id);
+
+  if (!main_file_ref) {
+    llvm::errs() << "Error: Main file entry not found for ID: "
+                 << main_file_id.getHashValue() << "\n";
+    return nullptr;
+  }
+
+  llvm::StringRef main_file_name = main_file_ref->getName();
 
   clang::LangOptions &lang_opts = CI.getLangOpts();
 

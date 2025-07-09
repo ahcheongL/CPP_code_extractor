@@ -12,8 +12,9 @@ using namespace std;
 class CallgraphVisitor : public clang::RecursiveASTVisitor<CallgraphVisitor> {
  public:
   explicit CallgraphVisitor(clang::SourceManager &src_manager,
-                            clang::LangOptions &lang_opts, const char *src_path,
-                            Json::Value &output_json, clang::CallGraph &CG);
+                            clang::LangOptions   &lang_opts,
+                            llvm::StringRef src_path, Json::Value &output_json,
+                            clang::CallGraph &CG);
 
   bool VisitFunctionDecl(clang::FunctionDecl *FuncDecl);
 
@@ -22,7 +23,7 @@ class CallgraphVisitor : public clang::RecursiveASTVisitor<CallgraphVisitor> {
  private:
   clang::SourceManager &src_manager_;
   clang::LangOptions   &lang_opts_;
-  const char           *src_path_;
+  llvm::StringRef       src_path_;
   Json::Value          &output_json_;
   clang::CallGraph     &CG_;
 };
@@ -31,7 +32,8 @@ class CallgraphASTConsumer : public clang::ASTConsumer {
  public:
   explicit CallgraphASTConsumer(clang::SourceManager &src_manager,
                                 clang::LangOptions   &lang_opts,
-                                const char *src_path, Json::Value &output_json);
+                                llvm::StringRef       src_path,
+                                Json::Value          &output_json);
 
   void HandleTranslationUnit(clang::ASTContext &Context) override;
 

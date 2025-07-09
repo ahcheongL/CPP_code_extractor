@@ -10,19 +10,19 @@ using namespace std;
 class FunctionVisitor : public clang::RecursiveASTVisitor<FunctionVisitor> {
  public:
   explicit FunctionVisitor(clang::SourceManager &src_manager,
-                           const char           *src_path);
+                           llvm::StringRef       src_path);
 
   bool VisitFunctionDecl(clang::FunctionDecl *FuncDecl);
 
  private:
   clang::SourceManager &src_manager_;
-  const char           *src_path_;
+  llvm::StringRef       src_path_;
 };
 
 class FunctionASTConsumer : public clang::ASTConsumer {
  public:
   explicit FunctionASTConsumer(clang::SourceManager &src_manager,
-                               const char           *src_path);
+                               llvm::StringRef       src_path);
 
   void HandleTranslationUnit(clang::ASTContext &Context) override;
 

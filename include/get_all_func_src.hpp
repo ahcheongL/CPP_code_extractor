@@ -12,14 +12,15 @@ class AllFuncSrcVisitor : public clang::RecursiveASTVisitor<AllFuncSrcVisitor> {
  public:
   explicit AllFuncSrcVisitor(clang::SourceManager &src_manager,
                              clang::LangOptions   &lang_opts,
-                             const char *src_path, Json::Value &output_json);
+                             llvm::StringRef       src_path,
+                             Json::Value          &output_json);
 
   bool VisitFunctionDecl(clang::FunctionDecl *FuncDecl);
 
  private:
   clang::SourceManager &src_manager_;
   clang::LangOptions   &lang_opts_;
-  const char           *src_path_;
+  llvm::StringRef       src_path_;
   Json::Value          &output_json_;
 };
 
@@ -27,7 +28,7 @@ class AllFuncSrcASTConsumer : public clang::ASTConsumer {
  public:
   explicit AllFuncSrcASTConsumer(clang::SourceManager &src_manager,
                                  clang::LangOptions   &lang_opts,
-                                 const char           *src_path,
+                                 llvm::StringRef       src_path,
                                  Json::Value          &output_json);
 
   void HandleTranslationUnit(clang::ASTContext &Context) override;

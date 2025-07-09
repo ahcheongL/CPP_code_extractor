@@ -14,7 +14,7 @@
 
 CallgraphVisitor::CallgraphVisitor(clang::SourceManager &src_manager,
                                    clang::LangOptions   &lang_opts,
-                                   const char           *src_path,
+                                   llvm::StringRef       src_path,
                                    Json::Value          &output_json,
                                    clang::CallGraph     &CG)
     : src_manager_(src_manager),
@@ -29,15 +29,9 @@ bool CallgraphVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
   string func_name = FuncDecl->getNameInfo().getName().getAsString();
 
   clang::SourceLocation loc = FuncDecl->getLocation();
+  llvm::StringRef       file_name = src_manager_.getFilename(loc);
 
-  // get filename
-  const clang::FileEntry *file_entry =
-      src_manager_.getFileEntryForID(src_manager_.getFileID(loc));
-  if (file_entry == nullptr) { return true; }
-
-  const char *file_name = file_entry->getName().data();
-
-  if (strcmp(file_name, src_path_) != 0) { return true; }
+  if (file_name != src_path_) { return true; }
 
   clang::CallGraphNode *node = CG_.getOrInsertNode(FuncDecl);
   if (node == NULL) { return true; }
@@ -189,7 +183,7 @@ void CallgraphVisitor::add_callee(const string &caller, const string &callee) {
 
 CallgraphASTConsumer::CallgraphASTConsumer(clang::SourceManager &src_manager,
                                            clang::LangOptions   &lang_opts,
-                                           const char           *src_path,
+                                           llvm::StringRef       src_path,
                                            Json::Value          &output_json)
     : CG_(), Visitor(src_manager, lang_opts, src_path, output_json, CG_) {
 }
@@ -210,12 +204,21 @@ CallgraphFrontendAction::CallgraphFrontendAction(Json::Value &output_json)
 
 std::unique_ptr<clang::ASTConsumer> CallgraphFrontendAction::CreateASTConsumer(
     clang::CompilerInstance &CI, llvm::StringRef InFile) {
-  auto       &src_manager = CI.getSourceManager();
-  auto       &lang_opts = CI.getLangOpts();
-  const char *main_file_name =
-      src_manager.getFileEntryForID(src_manager.getMainFileID())
-          ->getName()
-          .data();
+  auto &src_manager = CI.getSourceManager();
+  auto &lang_opts = CI.getLangOpts();
+
+  const clang::FileID main_file_id = src_manager.getMainFileID();
+
+  clang::OptionalFileEntryRef main_file_ref =
+      src_manager.getFileEntryRefForID(main_file_id);
+
+  if (!main_file_ref) {
+    llvm::errs() << "Error: Main file entry not found for ID: "
+                 << main_file_id.getHashValue() << "\n";
+    return nullptr;
+  }
+
+  llvm::StringRef main_file_name = main_file_ref->getName();
 
   return std::make_unique<CallgraphASTConsumer>(src_manager, lang_opts,
                                                 main_file_name, output_json_);

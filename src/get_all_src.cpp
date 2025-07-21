@@ -185,6 +185,12 @@ void MacroPrinter::MacroDefined(const clang::Token          &MacroNameTok,
                                 const clang::MacroDirective *MD) {
   const clang::MacroInfo *MI = MD->getMacroInfo();
 
+  clang::SourceLocation loc = MacroNameTok.getLocation();
+  llvm::StringRef       file_name = src_manager_.getFilename(loc);
+
+  if (file_name.empty()) { return; }
+  if (file_name.starts_with("/usr")) { return; }
+
   const string macro_name = MacroNameTok.getIdentifierInfo()->getName().str();
   string       def = "#define " + macro_name;
 

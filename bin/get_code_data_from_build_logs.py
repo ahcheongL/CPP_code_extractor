@@ -97,7 +97,7 @@ def main(argv):
         temp_output_path = temp_output.name
 
         cmd = [
-            "get_all_func_src",
+            "get_all_src",
             command.src_file,
             temp_output_path,
             "--",

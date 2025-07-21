@@ -42,7 +42,7 @@ DEPS := $(patsubst src/%.cpp, build/%.d, $(SRCS))
 
 .PHONY: all clean build_dir
 
-all: build/get_func_list build/get_func_src build/get_all_func_src build/libextract.a build/get_callgraph build/parse_cpp build/get_diff
+all: build/get_func_list build/get_func_src build/get_all_src build/libextract.a build/get_callgraph build/parse_cpp build/get_diff
 
 build/get_func_list: build/get_func_list.o build/cpp_code_extractor_util.o | build_dir
 	$(CXX) -o $@ $^ $(LLVM_LDFLAGS)
@@ -56,7 +56,7 @@ build/get_func_src: build/get_func_src.o build/cpp_code_extractor_util.o | build
 build/get_callgraph: build/get_callgraph.o build/cpp_code_extractor_util.o | build_dir
 	$(CXX) -o $@ $^ $(LLVM_LDFLAGS) -ljsoncpp
 
-build/get_all_func_src: build/get_all_func_src.o build/cpp_code_extractor_util.o | build_dir
+build/get_all_src: build/get_all_src.o build/cpp_code_extractor_util.o | build_dir
 	$(CXX) -o $@ $^ $(LLVM_LDFLAGS) -ljsoncpp
 
 build/get_diff: build/get_diff.o build/cpp_code_extractor_util.o | build_dir

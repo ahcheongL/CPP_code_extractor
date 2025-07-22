@@ -120,14 +120,15 @@ def main(argv):
 
         try:
             with open(temp_output_path, "r") as f:
-                func_srcs = json.load(f)
+                src_defs = json.load(f)
         except json.JSONDecodeError:
             continue
 
-        if func_srcs is None:
-            func_srcs = dict()
+        if src_defs is None:
+            src_defs = dict()
 
-        result["src"][command.src_file] = func_srcs
+        result["src"][command.src_file] = src_defs
+
         remove_file(temp_output_path)
 
         cmd = [
@@ -176,8 +177,12 @@ def main(argv):
 
         remove_file(temp_output_path)
 
-    num_funcs = sum(len(result["src"][file]) for file in result["src"].keys())
-    print(f"Found {len(result['src'])} source files with {num_funcs} functions.")
+    num_symbols = 0
+    for file in result["src"]:
+        for def_type in result["src"][file]:
+            num_symbols += len(result["src"][file][def_type])
+
+    print(f"Found {len(result['src'])} source files with {num_symbols} symbols.")
 
     with open(out_file_name, "w") as f:
         json.dump(result, f, indent=4)

@@ -25,7 +25,8 @@ AllSrcVisitor::AllSrcVisitor(clang::SourceManager &src_manager,
 bool AllSrcVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
   if (!FuncDecl->isThisDeclarationADefinition()) { return true; }
 
-  string func_name = FuncDecl->getNameInfo().getName().getAsString();
+  const string func_name = FuncDecl->getNameInfo().getName().getAsString();
+  if (func_name == "") { return true; }
 
   clang::SourceLocation loc = FuncDecl->getLocation();
   llvm::StringRef       file_name = src_manager_.getFilename(loc);
@@ -43,13 +44,21 @@ bool AllSrcVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
                                   src_manager_, lang_opts_)
           .str();
 
-  output_json_[func_name] = src_code;
+  output_json_["functions"][func_name] = src_code;
 
   return true;
 }
 
 bool AllSrcVisitor::VisitVarDecl(clang::VarDecl *VarDecl) {
-  string var_name = VarDecl->getNameAsString();
+  const string var_name = VarDecl->getNameAsString();
+  if (var_name == "") { return true; }
+
+  clang::SourceLocation loc = VarDecl->getLocation();
+  llvm::StringRef       file_name = src_manager_.getFilename(loc);
+  if (is_system_file(file_name.str())) {
+    // Skip system files
+    return true;
+  }
 
   // get variable initialization source code
   clang::SourceLocation start_loc = VarDecl->getBeginLoc();
@@ -61,13 +70,21 @@ bool AllSrcVisitor::VisitVarDecl(clang::VarDecl *VarDecl) {
                                   src_manager_, lang_opts_)
           .str();
 
-  output_json_[var_name] = src_code;
+  output_json_["variables"][var_name] = src_code;
 
   return true;
 }
 
 bool AllSrcVisitor::VisitTypedefDecl(clang::TypedefDecl *TypedefDecl) {
-  string typedef_name = TypedefDecl->getNameAsString();
+  const string typedef_name = TypedefDecl->getNameAsString();
+  if (typedef_name == "") { return true; }
+
+  clang::SourceLocation loc = TypedefDecl->getLocation();
+  llvm::StringRef       file_name = src_manager_.getFilename(loc);
+  if (is_system_file(file_name.str())) {
+    // Skip system files
+    return true;
+  }
 
   // get typedef source code
   clang::SourceLocation start_loc = TypedefDecl->getBeginLoc();
@@ -79,13 +96,21 @@ bool AllSrcVisitor::VisitTypedefDecl(clang::TypedefDecl *TypedefDecl) {
                                   src_manager_, lang_opts_)
           .str();
 
-  output_json_[typedef_name] = src_code;
+  output_json_["typedefs"][typedef_name] = src_code;
 
   return true;
 }
 
 bool AllSrcVisitor::VisitRecordDecl(clang::RecordDecl *RecordDecl) {
-  string record_name = RecordDecl->getNameAsString();
+  const string record_name = RecordDecl->getNameAsString();
+  if (record_name == "") { return true; }
+
+  clang::SourceLocation loc = RecordDecl->getLocation();
+  llvm::StringRef       file_name = src_manager_.getFilename(loc);
+  if (is_system_file(file_name.str())) {
+    // Skip system files
+    return true;
+  }
 
   // get record source code
   clang::SourceLocation start_loc = RecordDecl->getBeginLoc();
@@ -97,13 +122,21 @@ bool AllSrcVisitor::VisitRecordDecl(clang::RecordDecl *RecordDecl) {
                                   src_manager_, lang_opts_)
           .str();
 
-  output_json_[record_name] = src_code;
+  output_json_["records"][record_name] = src_code;
 
   return true;
 }
 
 bool AllSrcVisitor::VisitEnumDecl(clang::EnumDecl *EnumDecl) {
-  string enum_name = EnumDecl->getNameAsString();
+  const string enum_name = EnumDecl->getNameAsString();
+  if (enum_name == "") { return true; }
+
+  clang::SourceLocation loc = EnumDecl->getLocation();
+  llvm::StringRef       file_name = src_manager_.getFilename(loc);
+  if (is_system_file(file_name.str())) {
+    // Skip system files
+    return true;
+  }
 
   // get enum source code
   clang::SourceLocation start_loc = EnumDecl->getBeginLoc();
@@ -115,7 +148,7 @@ bool AllSrcVisitor::VisitEnumDecl(clang::EnumDecl *EnumDecl) {
                                   src_manager_, lang_opts_)
           .str();
 
-  output_json_[enum_name] = src_code;
+  output_json_["enums"][enum_name] = src_code;
 
   return true;
 }
@@ -142,6 +175,7 @@ void AllSrcASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
 AllSrcFrontendAction::AllSrcFrontendAction(Json::Value &output_json)
     : output_json_(output_json) {
 }
+
 unique_ptr<clang::ASTConsumer> AllSrcFrontendAction::CreateASTConsumer(
     clang::CompilerInstance &CI, llvm::StringRef InFile) {
   clang::SourceManager &source_manager = CI.getSourceManager();
@@ -189,7 +223,10 @@ void MacroPrinter::MacroDefined(const clang::Token          &MacroNameTok,
   llvm::StringRef       file_name = src_manager_.getFilename(loc);
 
   if (file_name.empty()) { return; }
-  if (file_name.starts_with("/usr")) { return; }
+  if (is_system_file(file_name.str())) {
+    // Skip system files
+    return;
+  }
 
   const string macro_name = MacroNameTok.getIdentifierInfo()->getName().str();
   string       def = "#define " + macro_name;
@@ -214,7 +251,8 @@ void MacroPrinter::MacroDefined(const clang::Token          &MacroNameTok,
     const unsigned int    length = Tok.getLength();
     def += string(data, length);
   }
-  output_json_[macro_name] = def;
+
+  output_json_["macros"][macro_name] = def;
 }
 
 // ////////////////////////
@@ -266,6 +304,12 @@ int main(int argc, const char **argv) {
   }
 
   Json::Value output_json;
+  output_json["macros"] = Json::Value(Json::objectValue);
+  output_json["functions"] = Json::Value(Json::objectValue);
+  output_json["variables"] = Json::Value(Json::objectValue);
+  output_json["typedefs"] = Json::Value(Json::objectValue);
+  output_json["records"] = Json::Value(Json::objectValue);
+  output_json["enums"] = Json::Value(Json::objectValue);
 
   stringstream src_buffer;
   src_buffer << src_file.rdbuf();

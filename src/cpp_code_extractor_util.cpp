@@ -31,9 +31,9 @@ vector<string> get_compile_args(int argc, const char **argv) {
   return result;
 }
 
-// Execute clang and get the system include paths
-// and add them to the compile args
-static void add_system_include_paths(vector<string> &compile_args) {
+static vector<string> system_include_dirs;
+
+static void get_system_include_dirs() {
   const char *cmd = "clang -E -x c++ - -v < /dev/null 2>&1";
   FILE       *fp = popen(cmd, "r");
   if (fp == NULL) {
@@ -61,8 +61,7 @@ static void add_system_include_paths(vector<string> &compile_args) {
 
       if (line[len - 1] == '\n') { line = line.substr(0, len - 1); }
 
-      compile_args.push_back("-isystem");
-      compile_args.push_back(line);
+      system_include_dirs.push_back(line);
       continue;
     }
 
@@ -78,4 +77,27 @@ static void add_system_include_paths(vector<string> &compile_args) {
   }
   pclose(fp);
   return;
+}
+
+// Execute clang and get the system include paths
+// and add them to the compile args
+static void add_system_include_paths(vector<string> &compile_args) {
+  get_system_include_dirs();
+
+  for (const auto &dir : system_include_dirs) {
+    compile_args.push_back("-isystem");
+    compile_args.push_back(dir);
+  }
+
+  return;
+}
+
+bool is_system_file(const string &file_path) {
+  if (system_include_dirs.empty()) { get_system_include_dirs(); }
+
+  for (const auto &dir : system_include_dirs) {
+    if (file_path.find(dir) == 0) { return true; }
+  }
+
+  return false;
 }

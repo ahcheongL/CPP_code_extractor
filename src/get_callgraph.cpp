@@ -63,6 +63,18 @@ bool CallgraphVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
         continue;
       }
 
+      clang::SourceLocation callee_loc = callee_func->getBeginLoc();
+
+      if (callee_loc.isMacroID()) {
+        callee_loc = src_manager_.getSpellingLoc(callee_loc);
+      }
+
+      llvm::StringRef callee_file_name = src_manager_.getFilename(callee_loc);
+      if (is_system_file(callee_file_name.str())) {
+        // Skip system files
+        continue;
+      }
+
       add_callee(func_name, callee_name);
       continue;
     }
@@ -107,6 +119,16 @@ bool CallgraphVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
         continue;
       }
 
+      const clang::SourceLocation callee_loc = callee_expr->getBeginLoc();
+      llvm::StringRef callee_file_name = src_manager_.getFilename(callee_loc);
+      if (is_system_file(callee_file_name.str())) {
+        // Skip system files
+        continue;
+      }
+
+      llvm::outs() << "CXXConstructExpr: " << callee_name
+                   << " in file: " << callee_file_name << "\n";
+
       add_callee(func_name, callee_name);
       continue;
     }
@@ -140,6 +162,17 @@ bool CallgraphVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
         llvm::outs() << "\n";
         continue;
       }
+
+      const clang::SourceLocation callee_loc = callee_expr->getBeginLoc();
+      llvm::StringRef callee_file_name = src_manager_.getFilename(callee_loc);
+      if (is_system_file(callee_file_name.str())) {
+        // Skip system files
+        continue;
+      }
+
+      llvm::outs() << "CXXMemberCallExpr: " << callee_name
+                   << " in file: " << callee_file_name << "\n";
+
       add_callee(func_name, callee_name);
       continue;
     }

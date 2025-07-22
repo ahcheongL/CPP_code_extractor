@@ -7,4 +7,5 @@
 using namespace std;
 
 vector<string> get_compile_args(int argc, const char **argv);
+bool           is_system_file(const string &file_path);
 #endif

@@ -9,16 +9,28 @@
 #include "clang/Tooling/Tooling.h"
 #include "cpp_code_extractor_util.hpp"
 
+static void add_element(Json::Value &dict, const string &file,
+                        const string &type, const string &key,
+                        const string &value) {
+  if (!dict.isMember(file)) { dict[file] = Json::Value(Json::objectValue); }
+
+  if (!dict[file].isMember(type)) {
+    dict[file][type] = Json::Value(Json::objectValue);
+  }
+
+  dict[file][type][key] = value;
+  return;
+}
+
 // /////////////////////////
 // AllSrcVisitor class
 // /////////////////////////
 
 AllSrcVisitor::AllSrcVisitor(clang::SourceManager &src_manager,
                              clang::LangOptions   &lang_opts,
-                             llvm::StringRef src_path, Json::Value &output_json)
+                             Json::Value          &output_json)
     : src_manager_(src_manager),
       lang_opts_(lang_opts),
-      src_path_(src_path),
       output_json_(output_json) {
 }
 
@@ -30,8 +42,17 @@ bool AllSrcVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
 
   clang::SourceLocation loc = FuncDecl->getLocation();
   llvm::StringRef       file_name = src_manager_.getFilename(loc);
+  const string          file_path = get_abs_path(file_name.str());
 
-  if (file_name != src_path_) { return true; }
+  if (file_path.empty()) {
+    // Skip if the file path is empty
+    return true;
+  }
+
+  if (is_system_file(file_path)) {
+    // Skip system files
+    return true;
+  }
 
   // get function source code
 
@@ -44,8 +65,7 @@ bool AllSrcVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
                                   src_manager_, lang_opts_)
           .str();
 
-  output_json_["functions"][func_name] = src_code;
-
+  add_element(output_json_, file_path, "functions", func_name, src_code);
   return true;
 }
 
@@ -55,7 +75,14 @@ bool AllSrcVisitor::VisitVarDecl(clang::VarDecl *VarDecl) {
 
   clang::SourceLocation loc = VarDecl->getLocation();
   llvm::StringRef       file_name = src_manager_.getFilename(loc);
-  if (is_system_file(file_name.str())) {
+  const string          file_path = get_abs_path(file_name.str());
+
+  if (file_path.empty()) {
+    // Skip if the file path is empty
+    return true;
+  }
+
+  if (is_system_file(file_path)) {
     // Skip system files
     return true;
   }
@@ -70,7 +97,7 @@ bool AllSrcVisitor::VisitVarDecl(clang::VarDecl *VarDecl) {
                                   src_manager_, lang_opts_)
           .str();
 
-  output_json_["variables"][var_name] = src_code;
+  add_element(output_json_, file_path, "variables", var_name, src_code);
 
   return true;
 }
@@ -81,7 +108,14 @@ bool AllSrcVisitor::VisitTypedefDecl(clang::TypedefDecl *TypedefDecl) {
 
   clang::SourceLocation loc = TypedefDecl->getLocation();
   llvm::StringRef       file_name = src_manager_.getFilename(loc);
-  if (is_system_file(file_name.str())) {
+  const string          file_path = get_abs_path(file_name.str());
+
+  if (file_path.empty()) {
+    // Skip if the file path is empty
+    return true;
+  }
+
+  if (is_system_file(file_path)) {
     // Skip system files
     return true;
   }
@@ -96,7 +130,7 @@ bool AllSrcVisitor::VisitTypedefDecl(clang::TypedefDecl *TypedefDecl) {
                                   src_manager_, lang_opts_)
           .str();
 
-  output_json_["typedefs"][typedef_name] = src_code;
+  add_element(output_json_, file_path, "typedefs", typedef_name, src_code);
 
   return true;
 }
@@ -107,7 +141,14 @@ bool AllSrcVisitor::VisitRecordDecl(clang::RecordDecl *RecordDecl) {
 
   clang::SourceLocation loc = RecordDecl->getLocation();
   llvm::StringRef       file_name = src_manager_.getFilename(loc);
-  if (is_system_file(file_name.str())) {
+  const string          file_path = get_abs_path(file_name.str());
+
+  if (file_path.empty()) {
+    // Skip if the file path is empty
+    return true;
+  }
+
+  if (is_system_file(file_path)) {
     // Skip system files
     return true;
   }
@@ -122,7 +163,7 @@ bool AllSrcVisitor::VisitRecordDecl(clang::RecordDecl *RecordDecl) {
                                   src_manager_, lang_opts_)
           .str();
 
-  output_json_["records"][record_name] = src_code;
+  add_element(output_json_, file_path, "records", record_name, src_code);
 
   return true;
 }
@@ -133,7 +174,14 @@ bool AllSrcVisitor::VisitEnumDecl(clang::EnumDecl *EnumDecl) {
 
   clang::SourceLocation loc = EnumDecl->getLocation();
   llvm::StringRef       file_name = src_manager_.getFilename(loc);
-  if (is_system_file(file_name.str())) {
+  const string          file_path = get_abs_path(file_name.str());
+
+  if (file_path.empty()) {
+    // Skip if the file path is empty
+    return true;
+  }
+
+  if (is_system_file(file_path)) {
     // Skip system files
     return true;
   }
@@ -148,7 +196,7 @@ bool AllSrcVisitor::VisitEnumDecl(clang::EnumDecl *EnumDecl) {
                                   src_manager_, lang_opts_)
           .str();
 
-  output_json_["enums"][enum_name] = src_code;
+  add_element(output_json_, file_path, "enums", enum_name, src_code);
 
   return true;
 }
@@ -159,9 +207,8 @@ bool AllSrcVisitor::VisitEnumDecl(clang::EnumDecl *EnumDecl) {
 
 AllSrcASTConsumer::AllSrcASTConsumer(clang::SourceManager &src_manager,
                                      clang::LangOptions   &lang_opts,
-                                     llvm::StringRef       src_path,
                                      Json::Value          &output_json)
-    : Visitor(src_manager, lang_opts, src_path, output_json) {
+    : Visitor(src_manager, lang_opts, output_json) {
 }
 
 void AllSrcASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
@@ -179,23 +226,10 @@ AllSrcFrontendAction::AllSrcFrontendAction(Json::Value &output_json)
 unique_ptr<clang::ASTConsumer> AllSrcFrontendAction::CreateASTConsumer(
     clang::CompilerInstance &CI, llvm::StringRef InFile) {
   clang::SourceManager &source_manager = CI.getSourceManager();
-  const clang::FileID   main_file_id = source_manager.getMainFileID();
-
-  clang::OptionalFileEntryRef main_file_ref =
-      source_manager.getFileEntryRefForID(main_file_id);
-
-  if (!main_file_ref) {
-    llvm::errs() << "Error: Main file entry not found for ID: "
-                 << main_file_id.getHashValue() << "\n";
-    return nullptr;
-  }
-
-  llvm::StringRef main_file_name = main_file_ref->getName();
-
-  clang::LangOptions &lang_opts = CI.getLangOpts();
+  clang::LangOptions   &lang_opts = CI.getLangOpts();
 
   return make_unique<AllSrcASTConsumer>(source_manager, lang_opts,
-                                        main_file_name, output_json_);
+                                        output_json_);
 }
 
 void AllSrcFrontendAction::ExecuteAction() {
@@ -223,7 +257,9 @@ void MacroPrinter::MacroDefined(const clang::Token          &MacroNameTok,
   llvm::StringRef       file_name = src_manager_.getFilename(loc);
 
   if (file_name.empty()) { return; }
-  if (is_system_file(file_name.str())) {
+  const string file_path = get_abs_path(file_name.str());
+
+  if (is_system_file(file_path)) {
     // Skip system files
     return;
   }
@@ -252,7 +288,8 @@ void MacroPrinter::MacroDefined(const clang::Token          &MacroNameTok,
     def += string(data, length);
   }
 
-  output_json_["macros"][macro_name] = def;
+  add_element(output_json_, file_path, "macros", macro_name, def);
+  return;
 }
 
 // ////////////////////////
@@ -304,12 +341,6 @@ int main(int argc, const char **argv) {
   }
 
   Json::Value output_json;
-  output_json["macros"] = Json::Value(Json::objectValue);
-  output_json["functions"] = Json::Value(Json::objectValue);
-  output_json["variables"] = Json::Value(Json::objectValue);
-  output_json["typedefs"] = Json::Value(Json::objectValue);
-  output_json["records"] = Json::Value(Json::objectValue);
-  output_json["enums"] = Json::Value(Json::objectValue);
 
   stringstream src_buffer;
   src_buffer << src_file.rdbuf();

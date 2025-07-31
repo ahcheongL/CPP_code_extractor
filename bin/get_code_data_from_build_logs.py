@@ -127,7 +127,16 @@ def main(argv):
         if src_defs is None:
             src_defs = dict()
 
-        result["src"][command.src_file] = src_defs
+        for file in src_defs:
+            if file not in result["src"]:
+                result["src"][file] = dict()
+
+            for def_type in src_defs[file]:
+                if def_type not in result["src"][file]:
+                    result["src"][file][def_type] = dict()
+
+                for name, src_code in src_defs[file][def_type].items():
+                    result["src"][file][def_type][name] = src_code
 
         remove_file(temp_output_path)
 

@@ -30,8 +30,17 @@ bool SrcRangeVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
 
   clang::SourceLocation loc = FuncDecl->getLocation();
   llvm::StringRef       file_name = src_manager_.getFilename(loc);
+  const string          file_path = get_abs_path(file_name.str());
 
-  if (file_name != src_path_) { return true; }
+  if (file_path.empty()) {
+    // Skip if the file path is empty
+    return true;
+  }
+
+  if (is_system_file(file_path)) {
+    // Skip system files
+    return true;
+  }
 
   // get function source code
 
@@ -45,9 +54,13 @@ bool SrcRangeVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
 
   unsigned int end_line = end_presumed_loc.getLine();
 
-  output_json_[func_name] = Json::Value(Json::objectValue);
-  output_json_[func_name]["begin"] = start_line;
-  output_json_[func_name]["end"] = end_line;
+  if (!output_json_.isMember(file_path)) {
+    output_json_[file_path] = Json::Value(Json::objectValue);
+  }
+
+  output_json_[file_path][func_name] = Json::Value(Json::objectValue);
+  output_json_[file_path][func_name]["begin"] = start_line;
+  output_json_[file_path][func_name]["end"] = end_line;
   return true;
 }
 

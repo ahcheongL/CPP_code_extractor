@@ -12,7 +12,7 @@ class AllSrcVisitor : public clang::RecursiveASTVisitor<AllSrcVisitor> {
  public:
   explicit AllSrcVisitor(clang::SourceManager &src_manager,
                          clang::LangOptions   &lang_opts,
-                         llvm::StringRef src_path, Json::Value &output_json);
+                         Json::Value          &output_json);
 
   bool VisitFunctionDecl(clang::FunctionDecl *FuncDecl);
   bool VisitVarDecl(clang::VarDecl *VarDecl);
@@ -23,7 +23,6 @@ class AllSrcVisitor : public clang::RecursiveASTVisitor<AllSrcVisitor> {
  private:
   clang::SourceManager &src_manager_;
   clang::LangOptions   &lang_opts_;
-  llvm::StringRef       src_path_;
   Json::Value          &output_json_;
 };
 
@@ -31,7 +30,6 @@ class AllSrcASTConsumer : public clang::ASTConsumer {
  public:
   explicit AllSrcASTConsumer(clang::SourceManager &src_manager,
                              clang::LangOptions   &lang_opts,
-                             llvm::StringRef       src_path,
                              Json::Value          &output_json);
 
   void HandleTranslationUnit(clang::ASTContext &Context) override;

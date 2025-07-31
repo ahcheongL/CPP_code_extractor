@@ -1,5 +1,6 @@
 #include "cpp_code_extractor_util.hpp"
 
+#include <limits.h>
 #include <string.h>
 
 #include <iostream>
@@ -100,4 +101,13 @@ bool is_system_file(const string &file_path) {
   }
 
   return false;
+}
+
+string get_abs_path(const string &file_path) {
+  char abs_path[PATH_MAX];
+  if (realpath(file_path.c_str(), abs_path) == nullptr) {
+    std::cerr << "Error: could not get absolute path for " << file_path << "\n";
+    return "";
+  }
+  return string(abs_path);
 }

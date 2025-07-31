@@ -45,8 +45,9 @@ bool SrcRangeVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
 
   unsigned int end_line = end_presumed_loc.getLine();
 
-  output_json_[func_name] = to_string(start_line) + "-" + to_string(end_line);
-
+  output_json_[func_name] = Json::Value(Json::objectValue);
+  output_json_[func_name]["begin"] = start_line;
+  output_json_[func_name]["end"] = end_line;
   return true;
 }
 

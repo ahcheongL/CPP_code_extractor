@@ -2,7 +2,7 @@
 
 1. Ubuntu 22.04
 
-2. Clang/LLVM 13.0.1+
+2. Clang/LLVM 20.1.7+
     * It assumes `llvm-config, clang, clang++, ...` are on `PATH`.
 
 3. `sudo apt install libjsoncpp-dev -y`

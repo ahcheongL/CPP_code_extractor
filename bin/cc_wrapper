@@ -5,6 +5,10 @@ import shutil
 import subprocess
 import time
 
+UNSUPPORTED_COMPILER_ARGUMENTS = [
+    "-fcallgraph-info",
+    "-ftrack-macro-expansion",
+]
 
 def is_executable(path):
     if shutil.which(path):
@@ -54,9 +58,23 @@ def main(argv):
 
     write_args_to_file(argv[1:])
 
-    args = [cc] + argv[1:]
+    # Check for unsupported compiler arguments
+    filtered_argv = []
+    for arg in argv[1:]:
+        is_supported_argument = True
+        for unsupported_arg in UNSUPPORTED_COMPILER_ARGUMENTS:
+            if arg.startswith(unsupported_arg):
+                print(
+                    f"[cc_wrapper WARNING]: Unsupported compiler argument '{arg}' detected. "
+                    "Ignoring it."
+                )
+                is_supported_argument = False
+                break
+        if is_supported_argument:
+            filtered_argv.append(arg)
+    filtered_argv = [cc] + filtered_argv
 
-    process = subprocess.run(args)
+    process = subprocess.run(filtered_argv)
     return process.returncode
 
 

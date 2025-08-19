@@ -104,6 +104,7 @@ bool is_system_file(const string &file_path) {
 }
 
 string get_abs_path(const string &file_path) {
+  if (file_path == "") { return ""; }
   char abs_path[PATH_MAX];
   if (realpath(file_path.c_str(), abs_path) == nullptr) {
     std::cerr << "Error: could not get absolute path for " << file_path << "\n";

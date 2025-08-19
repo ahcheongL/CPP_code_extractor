@@ -34,6 +34,7 @@ bool SrcRangeVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
 
   if (file_path.empty()) {
     // Skip if the file path is empty
+    std::cerr << "Warning: empty file path for function " << func_name << "\n";
     return true;
   }
 

@@ -157,6 +157,15 @@ int main(int argc, const char **argv) {
   output_file << output_json.toStyledString();
   output_file.close();
   std::cout << "Result written to " << out_json << "\n";
-  std::cout << "Total functions found: " << output_json.size() << "\n";
+  std::cout << "Total files found: " << output_json.size() << "\n";
+
+  unsigned int num_functions = 0;
+  for (const auto &file_entry : output_json.getMemberNames()) {
+    const auto &file_functions = output_json[file_entry];
+    num_functions += file_functions.size();
+  }
+
+  std::cout << "Total functions found: " << num_functions << "\n";
+
   return 0;
 }

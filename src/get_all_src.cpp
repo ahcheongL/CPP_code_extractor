@@ -265,28 +265,15 @@ void MacroPrinter::MacroDefined(const clang::Token          &MacroNameTok,
   }
 
   const string macro_name = MacroNameTok.getIdentifierInfo()->getName().str();
-  string       def = "#define " + macro_name;
 
-  // get macro arguments
-  if (!MI->param_empty()) {
-    def += "(";
-    auto iter = MI->param_begin();
-    while (iter != MI->param_end()) {
-      if (iter != MI->param_begin()) { def += ", "; }
-      def += (*iter)->getName().str();
-      ++iter;
-    }
-    def += ")";
-  }
+  clang::SourceLocation DefBegin = MI->getDefinitionLoc();
+  clang::SourceLocation DefEnd = MI->getDefinitionEndLoc();
 
-  def += " ";
-
-  for (const clang::Token &Tok : MI->tokens()) {
-    clang::SourceLocation TokLoc = Tok.getLocation();
-    const char           *data = src_manager_.getCharacterData(TokLoc);
-    const unsigned int    length = Tok.getLength();
-    def += string(data, length);
-  }
+  const string def =
+      "#define " + clang::Lexer::getSourceText(
+                       clang::CharSourceRange::getTokenRange(DefBegin, DefEnd),
+                       src_manager_, lang_opts_)
+                       .str();
 
   add_element(output_json_, file_path, "macros", macro_name, def);
   return;

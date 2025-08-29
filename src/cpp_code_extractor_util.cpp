@@ -107,8 +107,20 @@ string get_abs_path(const string &file_path) {
   if (file_path == "") { return ""; }
   char abs_path[PATH_MAX];
   if (realpath(file_path.c_str(), abs_path) == nullptr) {
-    std::cerr << "Error: could not get absolute path for " << file_path << "\n";
+    cerr << "Error: could not get absolute path for " << file_path << "\n";
     return "";
   }
   return string(abs_path);
+}
+
+string strip(const string &s) {
+  size_t start = s.find_first_not_of(" \t\n\r\f\v");  // all whitespace
+  if (start == string::npos) return "";  // string is all whitespace
+  size_t end = s.find_last_not_of(" \t\n\r\f\v");
+  return s.substr(start, end - start + 1);
+}
+
+bool ends_with(const string &s, const string &suffix) {
+  if (s.size() < suffix.size()) return false;
+  return s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0;
 }

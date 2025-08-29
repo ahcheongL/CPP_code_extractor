@@ -9,4 +9,7 @@ using namespace std;
 vector<string> get_compile_args(int argc, const char **argv);
 bool           is_system_file(const string &file_path);
 string         get_abs_path(const string &file_path);
+string         strip(const string &str);
+bool           ends_with(const string &str, const string &suffix);
+
 #endif

@@ -22,6 +22,66 @@ static void add_element(Json::Value &dict, const string &file,
   return;
 }
 
+static string get_macro_name(const string &line) {
+  istringstream iss(line);
+  string        define, name;
+  iss >> define >> name;
+
+  if (define != "#define") { return ""; }
+
+  // remove parameters if any
+  size_t paren = name.find('(');
+  if (paren != std::string::npos) name = name.substr(0, paren);
+  return name;
+}
+
+static void collect_disabled_macros(Json::Value  &output_json,
+                                    const string &file_path) {
+  static set<string> visited_files;
+  if (visited_files.find(file_path) != visited_files.end()) { return; }
+  visited_files.insert(file_path);
+
+  ifstream file(file_path);
+  if (!file.is_open()) {
+    llvm::outs() << "Failed to open file: " << file_path << "\n";
+    return;
+  }
+
+  string line;
+  string macro_line = "";
+  while (getline(file, line)) {
+    if (line.find("#define") == string::npos) { continue; }
+
+    macro_line = strip(line);
+    while (ends_with(line, "\\")) {
+      getline(file, line);
+      macro_line += "\n" + strip(line);
+    }
+
+    const string macro_name = get_macro_name(macro_line);
+
+    if (!macro_name.empty()) {
+      if (!output_json.isMember(file_path)) {
+        output_json[file_path] = Json::Value(Json::objectValue);
+      }
+
+      if (!output_json[file_path].isMember("disabled_macros")) {
+        output_json[file_path]["disabled_macros"] =
+            Json::Value(Json::objectValue);
+      }
+
+      if (!output_json[file_path]["disabled_macros"].isMember(macro_name)) {
+        output_json[file_path]["disabled_macros"][macro_name] =
+            Json::Value(Json::arrayValue);
+      }
+
+      output_json[file_path]["disabled_macros"][macro_name].append(macro_line);
+    }
+  }
+
+  return;
+}
+
 // /////////////////////////
 // AllSrcVisitor class
 // /////////////////////////
@@ -53,6 +113,8 @@ bool AllSrcVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
     // Skip system files
     return true;
   }
+
+  collect_disabled_macros(output_json_, file_path);
 
   // get function source code
 
@@ -87,6 +149,8 @@ bool AllSrcVisitor::VisitVarDecl(clang::VarDecl *VarDecl) {
     return true;
   }
 
+  collect_disabled_macros(output_json_, file_path);
+
   // get variable initialization source code
   clang::SourceLocation start_loc = VarDecl->getBeginLoc();
   clang::SourceLocation end_loc = VarDecl->getEndLoc();
@@ -119,6 +183,8 @@ bool AllSrcVisitor::VisitTypedefDecl(clang::TypedefDecl *TypedefDecl) {
     // Skip system files
     return true;
   }
+
+  collect_disabled_macros(output_json_, file_path);
 
   // get typedef source code
   clang::SourceLocation start_loc = TypedefDecl->getBeginLoc();
@@ -153,6 +219,8 @@ bool AllSrcVisitor::VisitRecordDecl(clang::RecordDecl *RecordDecl) {
     return true;
   }
 
+  collect_disabled_macros(output_json_, file_path);
+
   // get record source code
   clang::SourceLocation start_loc = RecordDecl->getBeginLoc();
   clang::SourceLocation end_loc = RecordDecl->getEndLoc();
@@ -185,6 +253,8 @@ bool AllSrcVisitor::VisitEnumDecl(clang::EnumDecl *EnumDecl) {
     // Skip system files
     return true;
   }
+
+  collect_disabled_macros(output_json_, file_path);
 
   // get enum source code
   clang::SourceLocation start_loc = EnumDecl->getBeginLoc();
@@ -304,6 +374,42 @@ void MacroAction::ExecuteAction() {
   return;
 }
 
+void remove_enabled_macros(Json::Value &output_json) {
+  for (const string &file_name : output_json.getMemberNames()) {
+    Json::Value &enabled_macros = output_json[file_name]["macros"];
+    Json::Value &disabled_macros = output_json[file_name]["disabled_macros"];
+
+    for (const string &macro_name : disabled_macros.getMemberNames()) {
+      if (!enabled_macros.isMember(macro_name)) { continue; }
+      const string &enabled_def = enabled_macros[macro_name].asString();
+
+      Json::Value &disabled_defs = disabled_macros[macro_name];
+
+      Json::Value remained = Json::Value(Json::arrayValue);
+
+      for (const Json::Value &disabled_def : disabled_defs) {
+        const string disabled_str = disabled_def.asString();
+
+        if (disabled_str == enabled_def) { continue; }
+        remained.append(disabled_def);
+      }
+
+      disabled_macros[macro_name] = remained;
+    }
+
+    Json::Value remained = Json::Value(Json::objectValue);
+
+    for (const string &macro_name : disabled_macros.getMemberNames()) {
+      Json::Value &disabled_defs = disabled_macros[macro_name];
+      if (disabled_defs.size() == 0) { continue; }
+      remained[macro_name] = disabled_defs;
+    }
+
+    output_json[file_name]["disabled_macros"] = remained;
+  }
+  return;
+}
+
 // ////////////////////////
 // // main function
 // ////////////////////////
@@ -340,6 +446,8 @@ int main(int argc, const char **argv) {
   clang::tooling::runToolOnCodeWithArgs(make_unique<MacroAction>(output_json),
                                         src_buffer.str(), compile_args,
                                         src_path);
+
+  remove_enabled_macros(output_json);
 
   ofstream output_file(output_filename);
   if (!output_file.is_open()) {

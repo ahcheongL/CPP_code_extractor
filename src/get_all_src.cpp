@@ -376,6 +376,8 @@ void MacroAction::ExecuteAction() {
 
 void remove_enabled_macros(Json::Value &output_json) {
   for (const string &file_name : output_json.getMemberNames()) {
+    if (!output_json[file_name].isMember("macros")) { continue; }
+
     Json::Value &enabled_macros = output_json[file_name]["macros"];
     Json::Value &disabled_macros = output_json[file_name]["disabled_macros"];
 

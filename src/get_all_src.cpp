@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <regex>
 #include <sstream>
 
 #include "clang/Frontend/CompilerInstance.h"
@@ -23,15 +24,14 @@ static void add_element(Json::Value &dict, const string &file,
 }
 
 static string get_macro_name(const string &line) {
-  istringstream iss(line);
-  string        define, name;
-  iss >> define >> name;
-
-  if (define != "#define") { return ""; }
-
-  // remove parameters if any
-  size_t paren = name.find('(');
-  if (paren != std::string::npos) name = name.substr(0, paren);
+  size_t pos = line.find("define");
+  if (pos == string::npos) { return ""; }
+  string name = line.substr(pos + 7);
+  pos = name.find(' ');
+  if (pos != string::npos) { name = name.substr(0, pos); }
+  pos = name.find('(');
+  if (pos != string::npos) { name = name.substr(0, pos); }
+  name = strip(name);
   return name;
 }
 
@@ -47,10 +47,12 @@ static void collect_disabled_macros(Json::Value  &output_json,
     return;
   }
 
+  regex pattern(R"(^\s*#\s*define\b)");
+
   string line;
   string macro_line = "";
   while (getline(file, line)) {
-    if (line.find("#define") == string::npos) { continue; }
+    if (!regex_search(line, pattern)) { continue; }
 
     macro_line = strip(line);
     while (ends_with(line, "\\")) {
@@ -333,6 +335,7 @@ void MacroPrinter::MacroDefined(const clang::Token          &MacroNameTok,
     // Skip system files
     return;
   }
+  collect_disabled_macros(output_json_, file_path);
 
   const string macro_name = MacroNameTok.getIdentifierInfo()->getName().str();
 

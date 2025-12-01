@@ -11,6 +11,7 @@ import tempfile
 
 src_extensions = [".c", ".cpp", ".cc"]
 
+subprocess_output = None  # Use None to inherit parent's stdio, or user subprocess.DEVNULL to suppress output
 
 class CompileCommand:
     def __init__(self, working_dir, command, src_file):
@@ -107,9 +108,9 @@ def main(argv):
 
         process = subprocess.Popen(
             cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            stdin=subprocess.DEVNULL,
+            stdout=subprocess_output,
+            stderr=subprocess_output,
+            stdin=subprocess_output,
         )
 
         process.communicate()
@@ -123,6 +124,9 @@ def main(argv):
                 src_defs = json.load(f)
         except json.JSONDecodeError:
             continue
+        
+        with open("/ssd_home/yeongbin/lasik/misrac_subjects/littlefs/debug.json", "w") as f:
+            json.dump(src_defs, f, indent=4)
 
         if src_defs is None:
             src_defs = dict()
@@ -135,8 +139,18 @@ def main(argv):
                 if def_type not in result["src"][file]:
                     result["src"][file][def_type] = dict()
 
-                for name, src_code in src_defs[file][def_type].items():
-                    result["src"][file][def_type][name] = src_code
+                for name in src_defs[file][def_type].keys():
+                    if (isinstance(src_defs[file][def_type][name], list) ):
+                        for definition in src_defs[file][def_type][name]:
+                            result["src"][file][def_type][name] = []
+                            if definition.get("code") is not None:
+                                result["src"][file][def_type][name].append(definition)
+                                
+                    elif (isinstance(src_defs[file][def_type][name], dict)):
+                        if src_defs[file][def_type][name].get("code") is not None:
+                            result["src"][file][def_type][name] = src_defs[file][def_type][name]
+                    else:
+                        print(f"Unknown definition type for {name} in {file} of type {def_type}")
 
         remove_file(temp_output_path)
 
@@ -149,9 +163,9 @@ def main(argv):
 
         process = subprocess.Popen(
             cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            stdin=subprocess.DEVNULL,
+            stdout=subprocess_output,
+            stderr=subprocess_output,
+            stdin=subprocess_output,
         )
 
         process.communicate()

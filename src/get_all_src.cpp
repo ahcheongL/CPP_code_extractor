@@ -10,17 +10,42 @@
 #include "clang/Tooling/Tooling.h"
 #include "cpp_code_extractor_util.hpp"
 
-static void add_element(Json::Value &dict, const string &file,
-                        const string &type, const string &key,
-                        const string &value) {
-  if (!dict.isMember(file)) { dict[file] = Json::Value(Json::objectValue); }
 
-  if (!dict[file].isMember(type)) {
-    dict[file][type] = Json::Value(Json::objectValue);
-  }
+static void add_object(Json::Value *root,
+                     const std::vector<std::string> &path,
+                     const Json::Value &value) {
+    Json::Value* current = root;
 
-  dict[file][type][key] = value;
-  return;
+    for (size_t i = 0; i < path.size()-1; i++) {
+        const std::string &key = path[i];
+        if (!current->isMember(key)) {
+            (*current)[key] = Json::Value(Json::objectValue);
+        }
+        current = &((*current)[key]);
+    }
+
+    const std::string &last_key = path.back();
+    (*current)[last_key] = Json::Value(value);
+}
+
+static void add_list(Json::Value *root,
+                     const std::vector<std::string> &path,
+                     const Json::Value &value) {
+    Json::Value* current = root;
+
+    for (size_t i = 0; i < path.size()-1; i++) {
+        const std::string &key = path[i];
+        if (!current->isMember(key)) {
+            (*current)[key] = Json::Value(Json::objectValue);
+        }
+        current = &((*current)[key]);
+    }
+
+    const std::string &last_key = path.back();
+    if (!current->isMember(last_key)) {
+        (*current)[last_key] = Json::Value(Json::arrayValue);
+    }
+    (*current)[last_key].append(Json::Value(value));
 }
 
 static string get_macro_name(const string &line) {
@@ -51,33 +76,27 @@ static void collect_disabled_macros(Json::Value  &output_json,
 
   string line;
   string macro_line = "";
+  int line_no = 0;
   while (getline(file, line)) {
+    line_no++;
     if (!regex_search(line, pattern)) { continue; }
 
     macro_line = strip(line);
+    int start_line_no = line_no - 1;
     while (ends_with(line, "\\")) {
       getline(file, line);
+      line_no++;
       macro_line += "\n" + strip(line);
     }
-
+    int end_line_no = line_no;
     const string macro_name = get_macro_name(macro_line);
 
     if (!macro_name.empty()) {
-      if (!output_json.isMember(file_path)) {
-        output_json[file_path] = Json::Value(Json::objectValue);
-      }
-
-      if (!output_json[file_path].isMember("disabled_macros")) {
-        output_json[file_path]["disabled_macros"] =
-            Json::Value(Json::objectValue);
-      }
-
-      if (!output_json[file_path]["disabled_macros"].isMember(macro_name)) {
-        output_json[file_path]["disabled_macros"][macro_name] =
-            Json::Value(Json::arrayValue);
-      }
-
-      output_json[file_path]["disabled_macros"][macro_name].append(macro_line);
+      Json::Value macro_info;
+      macro_info["code"] = macro_line;
+      macro_info["start_line"] = start_line_no;
+      macro_info["end_line"] = end_line_no;
+      add_list(&output_json, {file_path, "disabled_macros", macro_name}, macro_info);
     }
   }
 
@@ -129,7 +148,7 @@ bool AllSrcVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
                                   src_manager_, lang_opts_)
           .str();
 
-  add_element(output_json_, file_path, "functions", func_name, src_code);
+  add_object(&output_json_, {file_path, "functions", func_name, "code"}, Json::Value(src_code));
   return true;
 }
 
@@ -162,8 +181,21 @@ bool AllSrcVisitor::VisitVarDecl(clang::VarDecl *VarDecl) {
       clang::Lexer::getSourceText(clang::CharSourceRange::getTokenRange(range),
                                   src_manager_, lang_opts_)
           .str();
-
-  add_element(output_json_, file_path, "variables", var_name, src_code);
+  
+  if (VarDecl->hasGlobalStorage()) {
+    // add_element(output_json_, file_path, "global_variables", var_name, src_code);
+    add_object(&output_json_, {file_path, "global_variables", var_name, "code"}, Json::Value(src_code));
+  }
+  else if (VarDecl->isLocalVarDeclOrParm() ) {
+    if ( VarDecl->getLexicalDeclContext()->isFunctionOrMethod() ) {
+          clang::FunctionDecl* func_decl = static_cast<clang::FunctionDecl*>(VarDecl->getLexicalDeclContext());
+          const string func_name = func_decl->getNameInfo().getName().getAsString();
+          add_object(&output_json_, {file_path, "functions", func_name, "local_variables", var_name, "code"}, Json::Value(src_code));
+    }
+  }
+  else {
+    add_object(&output_json_, {file_path, "variables", var_name, "code"}, Json::Value(src_code));
+  }
 
   return true;
 }
@@ -198,7 +230,7 @@ bool AllSrcVisitor::VisitTypedefDecl(clang::TypedefDecl *TypedefDecl) {
                                   src_manager_, lang_opts_)
           .str();
 
-  add_element(output_json_, file_path, "typedefs", typedef_name, src_code);
+  add_object(&output_json_, {file_path, "typedefs", typedef_name, "code"}, Json::Value(src_code));
 
   return true;
 }
@@ -233,8 +265,8 @@ bool AllSrcVisitor::VisitRecordDecl(clang::RecordDecl *RecordDecl) {
                                   src_manager_, lang_opts_)
           .str();
 
-  add_element(output_json_, file_path, "records", record_name, src_code);
-
+  add_object(&output_json_, {file_path, "records", record_name, "code"}, Json::Value(src_code));
+  
   return true;
 }
 
@@ -268,7 +300,7 @@ bool AllSrcVisitor::VisitEnumDecl(clang::EnumDecl *EnumDecl) {
                                   src_manager_, lang_opts_)
           .str();
 
-  add_element(output_json_, file_path, "enums", enum_name, src_code);
+  add_object(&output_json_, {file_path, "enums", enum_name, "code"}, Json::Value(src_code));
 
   return true;
 }
@@ -348,7 +380,7 @@ void MacroPrinter::MacroDefined(const clang::Token          &MacroNameTok,
                        src_manager_, lang_opts_)
                        .str();
 
-  add_element(output_json_, file_path, "macros", macro_name, def);
+  add_object(&output_json_, {file_path, "macros", macro_name, "code"}, def);
   return;
 }
 
@@ -386,14 +418,14 @@ void remove_enabled_macros(Json::Value &output_json) {
 
     for (const string &macro_name : disabled_macros.getMemberNames()) {
       if (!enabled_macros.isMember(macro_name)) { continue; }
-      const string &enabled_def = enabled_macros[macro_name].asString();
+      const string &enabled_def = enabled_macros[macro_name]["code"].asString();
 
       Json::Value &disabled_defs = disabled_macros[macro_name];
 
       Json::Value remained = Json::Value(Json::arrayValue);
 
       for (const Json::Value &disabled_def : disabled_defs) {
-        const string disabled_str = disabled_def.asString();
+        const string disabled_str = disabled_def["code"].asString();
 
         if (disabled_str == enabled_def) { continue; }
         remained.append(disabled_def);

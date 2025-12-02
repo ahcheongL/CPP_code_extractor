@@ -82,20 +82,20 @@ static void collect_disabled_macros(Json::Value  &output_json,
     if (!regex_search(line, pattern)) { continue; }
 
     macro_line = strip(line);
-    int start_line_no = line_no - 1;
+    int line_start_no = line_no - 1;
     while (ends_with(line, "\\")) {
       getline(file, line);
       line_no++;
       macro_line += "\n" + strip(line);
     }
-    int end_line_no = line_no;
+    int line_end_no = line_no;
     const string macro_name = get_macro_name(macro_line);
 
     if (!macro_name.empty()) {
       Json::Value macro_info;
       macro_info["code"] = macro_line;
-      macro_info["start_line"] = start_line_no;
-      macro_info["end_line"] = end_line_no;
+      macro_info["line_start"] = line_start_no;
+      macro_info["line_end"] = line_end_no;
       add_list(&output_json, {file_path, "disabled_macros", macro_name}, macro_info);
     }
   }
@@ -147,8 +147,14 @@ bool AllSrcVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
       clang::Lexer::getSourceText(clang::CharSourceRange::getTokenRange(range),
                                   src_manager_, lang_opts_)
           .str();
+  const int line_start_no =  src_manager_.getSpellingLineNumber(start_loc);
+  const int line_end_no = src_manager_.getSpellingLineNumber(end_loc);
+  Json::Value func_info;
+  func_info["code"] = src_code;
+  func_info["line_start"] = line_start_no;
+  func_info["line_end"] = line_end_no;
+  add_object(&output_json_, {file_path, "functions", func_name}, func_info);
 
-  add_object(&output_json_, {file_path, "functions", func_name, "code"}, Json::Value(src_code));
   return true;
 }
 
@@ -181,20 +187,26 @@ bool AllSrcVisitor::VisitVarDecl(clang::VarDecl *VarDecl) {
       clang::Lexer::getSourceText(clang::CharSourceRange::getTokenRange(range),
                                   src_manager_, lang_opts_)
           .str();
+  const int line_start_no =  src_manager_.getSpellingLineNumber(start_loc);
+  const int line_end_no = src_manager_.getSpellingLineNumber(end_loc);
+
+  Json::Value var_info;
+  var_info["code"] = src_code;
+  var_info["line_start"] = line_start_no;
+  var_info["line_end"] = line_end_no;
   
   if (VarDecl->hasGlobalStorage()) {
-    // add_element(output_json_, file_path, "global_variables", var_name, src_code);
-    add_object(&output_json_, {file_path, "global_variables", var_name, "code"}, Json::Value(src_code));
+    add_object(&output_json_, {file_path, "global_variables", var_name}, var_info);
   }
   else if (VarDecl->isLocalVarDeclOrParm() ) {
     if ( VarDecl->getLexicalDeclContext()->isFunctionOrMethod() ) {
           clang::FunctionDecl* func_decl = static_cast<clang::FunctionDecl*>(VarDecl->getLexicalDeclContext());
           const string func_name = func_decl->getNameInfo().getName().getAsString();
-          add_object(&output_json_, {file_path, "functions", func_name, "local_variables", var_name, "code"}, Json::Value(src_code));
+          add_object(&output_json_, {file_path, "functions", func_name, "local_variables", var_name }, var_info);
     }
   }
   else {
-    add_object(&output_json_, {file_path, "variables", var_name, "code"}, Json::Value(src_code));
+    add_object(&output_json_, {file_path, "variables", var_name}, var_info);
   }
 
   return true;
@@ -229,8 +241,15 @@ bool AllSrcVisitor::VisitTypedefDecl(clang::TypedefDecl *TypedefDecl) {
       clang::Lexer::getSourceText(clang::CharSourceRange::getTokenRange(range),
                                   src_manager_, lang_opts_)
           .str();
+  const int line_start_no =  src_manager_.getSpellingLineNumber(start_loc);
+  const int line_end_no = src_manager_.getSpellingLineNumber(end_loc);
 
-  add_object(&output_json_, {file_path, "typedefs", typedef_name, "code"}, Json::Value(src_code));
+  Json::Value typedef_info;
+  typedef_info["code"] = src_code;
+  typedef_info["line_start"] = line_start_no;
+  typedef_info["line_end"] = line_end_no;
+
+  add_object(&output_json_, {file_path, "typedefs", typedef_name}, typedef_info);
 
   return true;
 }
@@ -264,8 +283,15 @@ bool AllSrcVisitor::VisitRecordDecl(clang::RecordDecl *RecordDecl) {
       clang::Lexer::getSourceText(clang::CharSourceRange::getTokenRange(range),
                                   src_manager_, lang_opts_)
           .str();
+  const int line_start_no =  src_manager_.getSpellingLineNumber(start_loc);
+  const int line_end_no = src_manager_.getSpellingLineNumber(end_loc);
 
-  add_object(&output_json_, {file_path, "records", record_name, "code"}, Json::Value(src_code));
+  Json::Value record_info;
+  record_info["code"] = src_code;
+  record_info["line_start"] = line_start_no;
+  record_info["line_end"] = line_end_no;
+
+  add_object(&output_json_, {file_path, "records", record_name}, record_info);
   
   return true;
 }
@@ -299,8 +325,15 @@ bool AllSrcVisitor::VisitEnumDecl(clang::EnumDecl *EnumDecl) {
       clang::Lexer::getSourceText(clang::CharSourceRange::getTokenRange(range),
                                   src_manager_, lang_opts_)
           .str();
+  const int line_start_no =  src_manager_.getSpellingLineNumber(start_loc);
+  const int line_end_no = src_manager_.getSpellingLineNumber(end_loc);
 
-  add_object(&output_json_, {file_path, "enums", enum_name, "code"}, Json::Value(src_code));
+  Json::Value enum_info;
+  enum_info["code"] = src_code;
+  enum_info["line_start"] = line_start_no;
+  enum_info["line_end"] = line_end_no;
+
+  add_object(&output_json_, {file_path, "enums", enum_name}, enum_info);
 
   return true;
 }
@@ -379,8 +412,15 @@ void MacroPrinter::MacroDefined(const clang::Token          &MacroNameTok,
                        clang::CharSourceRange::getTokenRange(DefBegin, DefEnd),
                        src_manager_, lang_opts_)
                        .str();
+  const int line_start_no =  src_manager_.getSpellingLineNumber(DefBegin);
+  const int line_end_no = src_manager_.getSpellingLineNumber(DefEnd);
 
-  add_object(&output_json_, {file_path, "macros", macro_name, "code"}, def);
+  Json::Value macro_info;
+  macro_info["code"] = def;
+  macro_info["line_start"] = line_start_no;
+  macro_info["line_end"] = line_end_no;
+
+  add_object(&output_json_, {file_path, "macros", macro_name}, macro_info);
   return;
 }
 

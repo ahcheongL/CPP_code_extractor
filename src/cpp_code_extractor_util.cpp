@@ -5,12 +5,12 @@
 
 #include <iostream>
 
-static void add_system_include_paths(vector<string> &compile_args);
+static void add_system_include_paths(std::vector<std::string> &compile_args);
 
 // Assume argv contains "--" followed by compile arguments
-// If it does not, return an empty vector
-vector<string> get_compile_args(int argc, const char **argv) {
-  vector<string> result;
+// If it does not, return an empty std::vector
+std::vector<std::string> get_compile_args(int argc, const char **argv) {
+  std::vector<std::string> result;
 
   unsigned int idx = 0;
 
@@ -32,7 +32,7 @@ vector<string> get_compile_args(int argc, const char **argv) {
   return result;
 }
 
-static vector<string> system_include_dirs;
+static std::vector<std::string> system_include_dirs;
 
 static void get_system_include_dirs() {
   const char *cmd = "clang -E -x c++ - -v < /dev/null 2>&1";
@@ -45,14 +45,14 @@ static void get_system_include_dirs() {
   char buffer[256];
   bool found_include_start = false;
   while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-    string line(buffer);
+    std::string line(buffer);
     if (found_include_start) {
-      if (line.find("End of search list.") != string::npos) {
+      if (line.find("End of search list.") != std::string::npos) {
         found_include_start = false;
         continue;
       }
 
-      if (line.find("starts here") != string::npos) { continue; }
+      if (line.find("starts here") != std::string::npos) { continue; }
 
       if (line.empty()) { continue; }
 
@@ -66,12 +66,12 @@ static void get_system_include_dirs() {
       continue;
     }
 
-    if (line.find("#include <...> search starts here") != string::npos) {
+    if (line.find("#include <...> search starts here") != std::string::npos) {
       found_include_start = true;
       continue;
     }
 
-    if (line.find("#include \"...\" search starts here") != string::npos) {
+    if (line.find("#include \"...\" search starts here") != std::string::npos) {
       found_include_start = true;
       continue;
     }
@@ -82,7 +82,7 @@ static void get_system_include_dirs() {
 
 // Execute clang and get the system include paths
 // and add them to the compile args
-static void add_system_include_paths(vector<string> &compile_args) {
+static void add_system_include_paths(std::vector<std::string> &compile_args) {
   get_system_include_dirs();
 
   for (const auto &dir : system_include_dirs) {
@@ -93,7 +93,7 @@ static void add_system_include_paths(vector<string> &compile_args) {
   return;
 }
 
-bool is_system_file(const string &file_path) {
+bool is_system_file(const std::string &file_path) {
   if (system_include_dirs.empty()) { get_system_include_dirs(); }
 
   for (const auto &dir : system_include_dirs) {
@@ -103,24 +103,24 @@ bool is_system_file(const string &file_path) {
   return false;
 }
 
-string get_abs_path(const string &file_path) {
+std::string get_abs_path(const std::string &file_path) {
   if (file_path == "") { return ""; }
   char abs_path[PATH_MAX];
   if (realpath(file_path.c_str(), abs_path) == nullptr) {
-    cerr << "Error: could not get absolute path for " << file_path << "\n";
+    std::cerr << "Error: could not get absolute path for " << file_path << "\n";
     return "";
   }
-  return string(abs_path);
+  return std::string(abs_path);
 }
 
-string strip(const string &s) {
+std::string strip(const std::string &s) {
   size_t start = s.find_first_not_of(" \t\n\r\f\v");  // all whitespace
-  if (start == string::npos) return "";  // string is all whitespace
+  if (start == std::string::npos) return "";  // std::string is all whitespace
   size_t end = s.find_last_not_of(" \t\n\r\f\v");
   return s.substr(start, end - start + 1);
 }
 
-bool ends_with(const string &s, const string &suffix) {
+bool ends_with(const std::string &s, const std::string &suffix) {
   if (s.size() < suffix.size()) return false;
   return s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0;
 }

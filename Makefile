@@ -29,11 +29,6 @@ endif
 
 CLANG_LIBS = -lclang-cpp
 
-# add libLLVM.so if it exists
-ifneq (, $(shell ldconfig -p | grep libLLVM.so))
-	CLANG_LIBS += -lLLVM
-endif
-
 LLVM_LDFLAGS := `llvm-config --ldflags` $(CLANG_LIBS) -Wl,-rpath,$(shell llvm-config --libdir)
 
 SRCS := $(wildcard src/*/*.cpp)

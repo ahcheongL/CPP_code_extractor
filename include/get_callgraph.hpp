@@ -7,8 +7,6 @@
 #include "clang/Analysis/CallGraph.h"
 #include "clang/Frontend/FrontendAction.h"
 
-using namespace std;
-
 class CallgraphVisitor : public clang::RecursiveASTVisitor<CallgraphVisitor> {
  public:
   explicit CallgraphVisitor(clang::SourceManager &src_manager,
@@ -18,7 +16,7 @@ class CallgraphVisitor : public clang::RecursiveASTVisitor<CallgraphVisitor> {
 
   bool VisitFunctionDecl(clang::FunctionDecl *FuncDecl);
 
-  void add_callee(const string &caller, const string &callee);
+  void add_callee(const std::string &caller, const std::string &callee);
 
  private:
   clang::SourceManager &src_manager_;
@@ -46,7 +44,7 @@ class CallgraphFrontendAction : public clang::ASTFrontendAction {
  public:
   CallgraphFrontendAction(Json::Value &output_json);
 
-  unique_ptr<clang::ASTConsumer> CreateASTConsumer(
+  std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(
       clang::CompilerInstance &CI, llvm::StringRef InFile) override;
 
   void ExecuteAction() override;
@@ -55,6 +53,6 @@ class CallgraphFrontendAction : public clang::ASTFrontendAction {
   Json::Value &output_json_;
 };
 
-bool json_has_val_in_array(const Json::Value &json, const string &val);
+bool json_has_val_in_array(const Json::Value &json, const std::string &val);
 
 #endif

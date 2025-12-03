@@ -5,8 +5,6 @@
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/FrontendAction.h"
 
-using namespace std;
-
 class FunctionVisitor : public clang::RecursiveASTVisitor<FunctionVisitor> {
  public:
   explicit FunctionVisitor(clang::SourceManager &src_manager,
@@ -34,7 +32,7 @@ class FunctionFrontendAction : public clang::ASTFrontendAction {
  public:
   FunctionFrontendAction();
 
-  unique_ptr<clang::ASTConsumer> CreateASTConsumer(
+  std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(
       clang::CompilerInstance &CI, llvm::StringRef InFile) override;
 
   void ExecuteAction() override;

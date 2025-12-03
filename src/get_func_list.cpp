@@ -25,7 +25,7 @@ bool FunctionVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
 
   if (!FuncDecl->isThisDeclarationADefinition()) { return true; }
 
-  string func_name = FuncDecl->getNameInfo().getName().getAsString();
+  std::string func_name = FuncDecl->getNameInfo().getName().getAsString();
   clang::SourceLocation loc = FuncDecl->getLocation();
   llvm::StringRef       file_name = src_manager_.getFilename(loc);
 
@@ -62,7 +62,7 @@ void FunctionASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
 FunctionFrontendAction::FunctionFrontendAction() {
 }
 
-unique_ptr<clang::ASTConsumer> FunctionFrontendAction::CreateASTConsumer(
+std::unique_ptr<clang::ASTConsumer> FunctionFrontendAction::CreateASTConsumer(
     clang::CompilerInstance &CI, llvm::StringRef InFile) {
   clang::SourceManager &source_manager = CI.getSourceManager();
   const clang::FileID   main_file_id = source_manager.getMainFileID();
@@ -77,7 +77,7 @@ unique_ptr<clang::ASTConsumer> FunctionFrontendAction::CreateASTConsumer(
   }
 
   llvm::StringRef main_file_name = main_file_ref->getName();
-  return make_unique<FunctionASTConsumer>(source_manager, main_file_name);
+  return std::make_unique<FunctionASTConsumer>(source_manager, main_file_name);
 }
 
 void FunctionFrontendAction::ExecuteAction() {
@@ -96,8 +96,8 @@ int main(int argc, const char **argv) {
     return 1;
   }
 
-  const char          *src_path = argv[1];
-  const vector<string> compile_args = get_compile_args(argc, argv);
+  const char                    *src_path = argv[1];
+  const std::vector<std::string> compile_args = get_compile_args(argc, argv);
 
 #if PRINT_DEBUG == 1
   std::cerr << "Compile args:\n";
@@ -107,20 +107,20 @@ int main(int argc, const char **argv) {
   std::cerr << "\n\n";
 #endif
 
-  ifstream src_file(src_path);
+  std::ifstream src_file(src_path);
 
   if (!src_file.is_open()) {
     std::cerr << "Error: could not open source file " << src_path << "\n";
     return 1;
   }
 
-  stringstream src_buffer;
+  std::stringstream src_buffer;
   src_buffer << src_file.rdbuf();
   src_file.close();
 
-  clang::tooling::runToolOnCodeWithArgs(make_unique<FunctionFrontendAction>(),
-                                        src_buffer.str(), compile_args,
-                                        src_path);
+  clang::tooling::runToolOnCodeWithArgs(
+      std::make_unique<FunctionFrontendAction>(), src_buffer.str(),
+      compile_args, src_path);
 
   return 0;
 }

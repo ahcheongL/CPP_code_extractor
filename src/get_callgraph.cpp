@@ -26,7 +26,7 @@ CallgraphVisitor::CallgraphVisitor(clang::SourceManager &src_manager,
 
 bool CallgraphVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
   if (!FuncDecl->isThisDeclarationADefinition()) { return true; }
-  string func_name = FuncDecl->getNameInfo().getName().getAsString();
+  std::string func_name = FuncDecl->getNameInfo().getName().getAsString();
 
   clang::SourceLocation loc = FuncDecl->getLocation();
   llvm::StringRef       file_name = src_manager_.getFilename(loc);
@@ -53,7 +53,7 @@ bool CallgraphVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
         continue;
       }
 
-      const string callee_name =
+      const std::string callee_name =
           callee_func->getNameInfo().getName().getAsString();
 
       if (callee_name.empty()) {
@@ -109,7 +109,7 @@ bool CallgraphVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
         continue;
       }
 
-      const string callee_name =
+      const std::string callee_name =
           ctor_decl->getNameInfo().getName().getAsString();
 
       if (callee_name.empty()) {
@@ -154,7 +154,7 @@ bool CallgraphVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
         llvm::outs() << "\n";
         continue;
       }
-      const string callee_name =
+      const std::string callee_name =
           method_decl->getNameInfo().getName().getAsString();
       if (callee_name.empty()) {
         llvm::outs() << "Skip empty callee name in CXXMemberCallExpr :";
@@ -185,7 +185,8 @@ bool CallgraphVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
   return true;
 }
 
-void CallgraphVisitor::add_callee(const string &caller, const string &callee) {
+void CallgraphVisitor::add_callee(const std::string &caller,
+                                  const std::string &callee) {
   if (!output_json_.isMember(caller)) {
     output_json_[caller] = Json::Value(Json::objectValue);
     output_json_[caller]["callees"] = Json::Value(Json::arrayValue);
@@ -273,12 +274,12 @@ int main(int argc, const char **argv) {
     return 1;
   }
 
-  const string src_path = argv[1];
-  const char  *output_filename = argv[2];
+  const std::string src_path = argv[1];
+  const char       *output_filename = argv[2];
 
-  const vector<string> compile_args = get_compile_args(argc, argv);
+  const std::vector<std::string> compile_args = get_compile_args(argc, argv);
 
-  ifstream src_file(src_path);
+  std::ifstream src_file(src_path);
 
   if (!src_file.is_open()) {
     std::cerr << "Error: could not open source file " << src_path << "\n";
@@ -287,15 +288,15 @@ int main(int argc, const char **argv) {
 
   Json::Value output_json;
 
-  stringstream src_buffer;
+  std::stringstream src_buffer;
   src_buffer << src_file.rdbuf();
   src_file.close();
 
   clang::tooling::runToolOnCodeWithArgs(
-      make_unique<CallgraphFrontendAction>(output_json), src_buffer.str(),
+      std::make_unique<CallgraphFrontendAction>(output_json), src_buffer.str(),
       compile_args, src_path);
 
-  ofstream output_file(output_filename);
+  std::ofstream output_file(output_filename);
   if (!output_file.is_open()) {
     std::cerr << "Error: could not open output file " << output_filename
               << "\n";
@@ -310,7 +311,7 @@ int main(int argc, const char **argv) {
   return 0;
 }
 
-bool json_has_val_in_array(const Json::Value &json, const string &val) {
+bool json_has_val_in_array(const Json::Value &json, const std::string &val) {
   if (!json.isArray()) { return false; }
   for (const auto &item : json) {
     if (item.asString() == val) { return true; }

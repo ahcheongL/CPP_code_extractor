@@ -38,7 +38,7 @@ void ParseASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
 
     const bool is_in_target_file = file_name == src_path_;
 
-    const string decl_name = named_decl->getNameAsString();
+    const std::string decl_name = named_decl->getNameAsString();
 
     decl_elem["name"] = decl_name;
     decl_elem["is_in_target_file"] = is_in_target_file;
@@ -47,10 +47,11 @@ void ParseASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
     clang::SourceLocation end_loc = named_decl->getEndLoc();
     clang::SourceRange    range(start_loc, end_loc);
 
-    const string src_code = clang::Lexer::getSourceText(
-                                clang::CharSourceRange::getTokenRange(range),
-                                src_manager_, lang_opts_)
-                                .str();
+    const std::string src_code =
+        clang::Lexer::getSourceText(
+            clang::CharSourceRange::getTokenRange(range), src_manager_,
+            lang_opts_)
+            .str();
 
     const bool is_func_def = is_in_target_file &&
                              llvm::isa<clang::FunctionDecl>(named_decl) &&
@@ -116,12 +117,12 @@ int main(int argc, const char **argv) {
     return 1;
   }
 
-  const string src_path = argv[1];
-  const char  *output_filename = argv[2];
+  const std::string src_path = argv[1];
+  const char       *output_filename = argv[2];
 
-  const vector<string> compile_args = get_compile_args(argc, argv);
+  const std::vector<std::string> compile_args = get_compile_args(argc, argv);
 
-  ifstream src_file(src_path);
+  std::ifstream src_file(src_path);
 
   if (!src_file.is_open()) {
     std::cerr << "Error: could not open source file " << src_path << "\n";
@@ -130,15 +131,15 @@ int main(int argc, const char **argv) {
 
   Json::Value output_json = Json::Value(Json::arrayValue);
 
-  stringstream src_buffer;
+  std::stringstream src_buffer;
   src_buffer << src_file.rdbuf();
   src_file.close();
 
   clang::tooling::runToolOnCodeWithArgs(
-      make_unique<ParseFrontendAction>(output_json), src_buffer.str(),
+      std::make_unique<ParseFrontendAction>(output_json), src_buffer.str(),
       compile_args, src_path);
 
-  ofstream output_file(output_filename);
+  std::ofstream output_file(output_filename);
   if (!output_file.is_open()) {
     std::cerr << "Error: could not open output file " << output_filename
               << "\n";

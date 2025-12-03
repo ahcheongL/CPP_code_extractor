@@ -10,76 +10,71 @@
 #include "clang/Tooling/Tooling.h"
 #include "cpp_code_extractor_util.hpp"
 
+static void add_object(Json::Value *root, const std::vector<std::string> &keys,
+                       const Json::Value &value) {
+  Json::Value *current = root;
 
-static void add_object(Json::Value *root,
-                     const std::vector<std::string> &path,
-                     const Json::Value &value) {
-    Json::Value* current = root;
-
-    for (size_t i = 0; i < path.size()-1; i++) {
-        const std::string &key = path[i];
-        if (!current->isMember(key)) {
-            (*current)[key] = Json::Value(Json::objectValue);
-        }
-        current = &((*current)[key]);
+  for (const std::string &key : keys) {
+    if (!current->isMember(key)) {
+      (*current)[key] = Json::Value(Json::objectValue);
     }
+    current = &((*current)[key]);
+  }
 
-    const std::string &last_key = path.back();
-    (*current)[last_key] = Json::Value(value);
+  const std::string &last_key = keys.back();
+  (*current)[last_key] = Json::Value(value);
 }
 
-static void add_list(Json::Value *root,
-                     const std::vector<std::string> &path,
+static void add_list(Json::Value *root, const std::vector<std::string> &keys,
                      const Json::Value &value) {
-    Json::Value* current = root;
+  Json::Value *current = root;
 
-    for (size_t i = 0; i < path.size()-1; i++) {
-        const std::string &key = path[i];
-        if (!current->isMember(key)) {
-            (*current)[key] = Json::Value(Json::objectValue);
-        }
-        current = &((*current)[key]);
+  for (const std::string &key : keys) {
+    if (!current->isMember(key)) {
+      (*current)[key] = Json::Value(Json::objectValue);
     }
+    current = &((*current)[key]);
+  }
 
-    const std::string &last_key = path.back();
-    if (!current->isMember(last_key)) {
-        (*current)[last_key] = Json::Value(Json::arrayValue);
-    }
-    (*current)[last_key].append(Json::Value(value));
+  const std::string &last_key = keys.back();
+  if (!current->isMember(last_key)) {
+    (*current)[last_key] = Json::Value(Json::arrayValue);
+  }
+  (*current)[last_key].append(Json::Value(value));
 }
 
-static string get_macro_name(const string &line) {
+static std::string get_macro_name(const std::string &line) {
   size_t pos = line.find("define");
-  if (pos == string::npos) { return ""; }
-  string name = line.substr(pos + 7);
+  if (pos == std::string::npos) { return ""; }
+  std::string name = line.substr(pos + 7);
   pos = name.find(' ');
-  if (pos != string::npos) { name = name.substr(0, pos); }
+  if (pos != std::string::npos) { name = name.substr(0, pos); }
   pos = name.find('(');
-  if (pos != string::npos) { name = name.substr(0, pos); }
+  if (pos != std::string::npos) { name = name.substr(0, pos); }
   name = strip(name);
   return name;
 }
 
-static void collect_disabled_macros(Json::Value  &output_json,
-                                    const string &file_path) {
-  static set<string> visited_files;
+static void collect_disabled_macros(Json::Value       &output_json,
+                                    const std::string &file_path) {
+  static std::set<std::string> visited_files;
   if (visited_files.find(file_path) != visited_files.end()) { return; }
   visited_files.insert(file_path);
 
-  ifstream file(file_path);
+  std::ifstream file(file_path);
   if (!file.is_open()) {
     llvm::outs() << "Failed to open file: " << file_path << "\n";
     return;
   }
 
-  regex pattern(R"(^\s*#\s*define\b)");
+  std::regex pattern(R"(^\s*#\s*define\b)");
 
-  string line;
-  string macro_line = "";
-  int line_no = 0;
+  std::string line;
+  std::string macro_line = "";
+  int         line_no = 0;
   while (getline(file, line)) {
     line_no++;
-    if (!regex_search(line, pattern)) { continue; }
+    if (!std::regex_search(line, pattern)) { continue; }
 
     macro_line = strip(line);
     int line_start_no = line_no - 1;
@@ -88,15 +83,16 @@ static void collect_disabled_macros(Json::Value  &output_json,
       line_no++;
       macro_line += "\n" + strip(line);
     }
-    int line_end_no = line_no;
-    const string macro_name = get_macro_name(macro_line);
+    int               line_end_no = line_no;
+    const std::string macro_name = get_macro_name(macro_line);
 
     if (!macro_name.empty()) {
       Json::Value macro_info;
       macro_info["code"] = macro_line;
       macro_info["line_start"] = line_start_no;
       macro_info["line_end"] = line_end_no;
-      add_list(&output_json, {file_path, "disabled_macros", macro_name}, macro_info);
+      add_list(&output_json, {file_path, "disabled_macros", macro_name},
+               macro_info);
     }
   }
 
@@ -118,12 +114,12 @@ AllSrcVisitor::AllSrcVisitor(clang::SourceManager &src_manager,
 bool AllSrcVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
   if (!FuncDecl->isThisDeclarationADefinition()) { return true; }
 
-  const string func_name = FuncDecl->getNameInfo().getName().getAsString();
+  const std::string func_name = FuncDecl->getNameInfo().getName().getAsString();
   if (func_name == "") { return true; }
 
   clang::SourceLocation loc = FuncDecl->getLocation();
   llvm::StringRef       file_name = src_manager_.getFilename(loc);
-  const string          file_path = get_abs_path(file_name.str());
+  const std::string     file_path = get_abs_path(file_name.str());
 
   if (file_path.empty()) {
     // Skip if the file path is empty
@@ -143,12 +139,12 @@ bool AllSrcVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
   clang::SourceLocation end_loc = FuncDecl->getEndLoc();
   clang::SourceRange    range(start_loc, end_loc);
 
-  const string src_code =
+  const std::string src_code =
       clang::Lexer::getSourceText(clang::CharSourceRange::getTokenRange(range),
                                   src_manager_, lang_opts_)
           .str();
-  const int line_start_no =  src_manager_.getSpellingLineNumber(start_loc);
-  const int line_end_no = src_manager_.getSpellingLineNumber(end_loc);
+  const int   line_start_no = src_manager_.getSpellingLineNumber(start_loc);
+  const int   line_end_no = src_manager_.getSpellingLineNumber(end_loc);
   Json::Value func_info;
   func_info["code"] = src_code;
   func_info["line_start"] = line_start_no;
@@ -159,12 +155,12 @@ bool AllSrcVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
 }
 
 bool AllSrcVisitor::VisitVarDecl(clang::VarDecl *VarDecl) {
-  const string var_name = VarDecl->getNameAsString();
+  const std::string var_name = VarDecl->getNameAsString();
   if (var_name == "") { return true; }
 
   clang::SourceLocation loc = VarDecl->getLocation();
   llvm::StringRef       file_name = src_manager_.getFilename(loc);
-  const string          file_path = get_abs_path(file_name.str());
+  const std::string     file_path = get_abs_path(file_name.str());
 
   if (file_path.empty()) {
     // Skip if the file path is empty
@@ -183,29 +179,33 @@ bool AllSrcVisitor::VisitVarDecl(clang::VarDecl *VarDecl) {
   clang::SourceLocation end_loc = VarDecl->getEndLoc();
   clang::SourceRange    range(start_loc, end_loc);
 
-  const string src_code =
+  const std::string src_code =
       clang::Lexer::getSourceText(clang::CharSourceRange::getTokenRange(range),
                                   src_manager_, lang_opts_)
           .str();
-  const int line_start_no =  src_manager_.getSpellingLineNumber(start_loc);
+  const int line_start_no = src_manager_.getSpellingLineNumber(start_loc);
   const int line_end_no = src_manager_.getSpellingLineNumber(end_loc);
 
   Json::Value var_info;
   var_info["code"] = src_code;
   var_info["line_start"] = line_start_no;
   var_info["line_end"] = line_end_no;
-  
+
   if (VarDecl->hasGlobalStorage()) {
-    add_object(&output_json_, {file_path, "global_variables", var_name}, var_info);
-  }
-  else if (VarDecl->isLocalVarDeclOrParm() ) {
-    if ( VarDecl->getLexicalDeclContext()->isFunctionOrMethod() ) {
-          clang::FunctionDecl* func_decl = static_cast<clang::FunctionDecl*>(VarDecl->getLexicalDeclContext());
-          const string func_name = func_decl->getNameInfo().getName().getAsString();
-          add_object(&output_json_, {file_path, "functions", func_name, "local_variables", var_name }, var_info);
+    add_object(&output_json_, {file_path, "global_variables", var_name},
+               var_info);
+  } else if (VarDecl->isLocalVarDeclOrParm()) {
+    if (VarDecl->getLexicalDeclContext()->isFunctionOrMethod()) {
+      clang::FunctionDecl *func_decl =
+          static_cast<clang::FunctionDecl *>(VarDecl->getLexicalDeclContext());
+      const std::string func_name =
+          func_decl->getNameInfo().getName().getAsString();
+      add_object(
+          &output_json_,
+          {file_path, "functions", func_name, "local_variables", var_name},
+          var_info);
     }
-  }
-  else {
+  } else {
     add_object(&output_json_, {file_path, "variables", var_name}, var_info);
   }
 
@@ -213,12 +213,12 @@ bool AllSrcVisitor::VisitVarDecl(clang::VarDecl *VarDecl) {
 }
 
 bool AllSrcVisitor::VisitTypedefDecl(clang::TypedefDecl *TypedefDecl) {
-  const string typedef_name = TypedefDecl->getNameAsString();
+  const std::string typedef_name = TypedefDecl->getNameAsString();
   if (typedef_name == "") { return true; }
 
   clang::SourceLocation loc = TypedefDecl->getLocation();
   llvm::StringRef       file_name = src_manager_.getFilename(loc);
-  const string          file_path = get_abs_path(file_name.str());
+  const std::string     file_path = get_abs_path(file_name.str());
 
   if (file_path.empty()) {
     // Skip if the file path is empty
@@ -237,11 +237,11 @@ bool AllSrcVisitor::VisitTypedefDecl(clang::TypedefDecl *TypedefDecl) {
   clang::SourceLocation end_loc = TypedefDecl->getEndLoc();
   clang::SourceRange    range(start_loc, end_loc);
 
-  const string src_code =
+  const std::string src_code =
       clang::Lexer::getSourceText(clang::CharSourceRange::getTokenRange(range),
                                   src_manager_, lang_opts_)
           .str();
-  const int line_start_no =  src_manager_.getSpellingLineNumber(start_loc);
+  const int line_start_no = src_manager_.getSpellingLineNumber(start_loc);
   const int line_end_no = src_manager_.getSpellingLineNumber(end_loc);
 
   Json::Value typedef_info;
@@ -249,18 +249,19 @@ bool AllSrcVisitor::VisitTypedefDecl(clang::TypedefDecl *TypedefDecl) {
   typedef_info["line_start"] = line_start_no;
   typedef_info["line_end"] = line_end_no;
 
-  add_object(&output_json_, {file_path, "typedefs", typedef_name}, typedef_info);
+  add_object(&output_json_, {file_path, "typedefs", typedef_name},
+             typedef_info);
 
   return true;
 }
 
 bool AllSrcVisitor::VisitRecordDecl(clang::RecordDecl *RecordDecl) {
-  const string record_name = RecordDecl->getNameAsString();
+  const std::string record_name = RecordDecl->getNameAsString();
   if (record_name == "") { return true; }
 
   clang::SourceLocation loc = RecordDecl->getLocation();
   llvm::StringRef       file_name = src_manager_.getFilename(loc);
-  const string          file_path = get_abs_path(file_name.str());
+  const std::string     file_path = get_abs_path(file_name.str());
 
   if (file_path.empty()) {
     // Skip if the file path is empty
@@ -279,11 +280,11 @@ bool AllSrcVisitor::VisitRecordDecl(clang::RecordDecl *RecordDecl) {
   clang::SourceLocation end_loc = RecordDecl->getEndLoc();
   clang::SourceRange    range(start_loc, end_loc);
 
-  const string src_code =
+  const std::string src_code =
       clang::Lexer::getSourceText(clang::CharSourceRange::getTokenRange(range),
                                   src_manager_, lang_opts_)
           .str();
-  const int line_start_no =  src_manager_.getSpellingLineNumber(start_loc);
+  const int line_start_no = src_manager_.getSpellingLineNumber(start_loc);
   const int line_end_no = src_manager_.getSpellingLineNumber(end_loc);
 
   Json::Value record_info;
@@ -292,17 +293,17 @@ bool AllSrcVisitor::VisitRecordDecl(clang::RecordDecl *RecordDecl) {
   record_info["line_end"] = line_end_no;
 
   add_object(&output_json_, {file_path, "records", record_name}, record_info);
-  
+
   return true;
 }
 
 bool AllSrcVisitor::VisitEnumDecl(clang::EnumDecl *EnumDecl) {
-  const string enum_name = EnumDecl->getNameAsString();
+  const std::string enum_name = EnumDecl->getNameAsString();
   if (enum_name == "") { return true; }
 
   clang::SourceLocation loc = EnumDecl->getLocation();
   llvm::StringRef       file_name = src_manager_.getFilename(loc);
-  const string          file_path = get_abs_path(file_name.str());
+  const std::string     file_path = get_abs_path(file_name.str());
 
   if (file_path.empty()) {
     // Skip if the file path is empty
@@ -321,11 +322,11 @@ bool AllSrcVisitor::VisitEnumDecl(clang::EnumDecl *EnumDecl) {
   clang::SourceLocation end_loc = EnumDecl->getEndLoc();
   clang::SourceRange    range(start_loc, end_loc);
 
-  const string src_code =
+  const std::string src_code =
       clang::Lexer::getSourceText(clang::CharSourceRange::getTokenRange(range),
                                   src_manager_, lang_opts_)
           .str();
-  const int line_start_no =  src_manager_.getSpellingLineNumber(start_loc);
+  const int line_start_no = src_manager_.getSpellingLineNumber(start_loc);
   const int line_end_no = src_manager_.getSpellingLineNumber(end_loc);
 
   Json::Value enum_info;
@@ -360,13 +361,13 @@ AllSrcFrontendAction::AllSrcFrontendAction(Json::Value &output_json)
     : output_json_(output_json) {
 }
 
-unique_ptr<clang::ASTConsumer> AllSrcFrontendAction::CreateASTConsumer(
+std::unique_ptr<clang::ASTConsumer> AllSrcFrontendAction::CreateASTConsumer(
     clang::CompilerInstance &CI, llvm::StringRef InFile) {
   clang::SourceManager &source_manager = CI.getSourceManager();
   clang::LangOptions   &lang_opts = CI.getLangOpts();
 
-  return make_unique<AllSrcASTConsumer>(source_manager, lang_opts,
-                                        output_json_);
+  return std::make_unique<AllSrcASTConsumer>(source_manager, lang_opts,
+                                             output_json_);
 }
 
 void AllSrcFrontendAction::ExecuteAction() {
@@ -394,7 +395,7 @@ void MacroPrinter::MacroDefined(const clang::Token          &MacroNameTok,
   llvm::StringRef       file_name = src_manager_.getFilename(loc);
 
   if (file_name.empty()) { return; }
-  const string file_path = get_abs_path(file_name.str());
+  const std::string file_path = get_abs_path(file_name.str());
 
   if (is_system_file(file_path)) {
     // Skip system files
@@ -402,17 +403,18 @@ void MacroPrinter::MacroDefined(const clang::Token          &MacroNameTok,
   }
   collect_disabled_macros(output_json_, file_path);
 
-  const string macro_name = MacroNameTok.getIdentifierInfo()->getName().str();
+  const std::string macro_name =
+      MacroNameTok.getIdentifierInfo()->getName().str();
 
   clang::SourceLocation DefBegin = MI->getDefinitionLoc();
   clang::SourceLocation DefEnd = MI->getDefinitionEndLoc();
 
-  const string def =
+  const std::string def =
       "#define " + clang::Lexer::getSourceText(
                        clang::CharSourceRange::getTokenRange(DefBegin, DefEnd),
                        src_manager_, lang_opts_)
                        .str();
-  const int line_start_no =  src_manager_.getSpellingLineNumber(DefBegin);
+  const int line_start_no = src_manager_.getSpellingLineNumber(DefBegin);
   const int line_end_no = src_manager_.getSpellingLineNumber(DefEnd);
 
   Json::Value macro_info;
@@ -437,7 +439,8 @@ void MacroAction::ExecuteAction() {
   clang::SourceManager    &SM = PP.getSourceManager();
   clang::LangOptions      &lang_opts = CI.getLangOpts();
 
-  PP.addPPCallbacks(make_unique<MacroPrinter>(SM, lang_opts, output_json_));
+  PP.addPPCallbacks(
+      std::make_unique<MacroPrinter>(SM, lang_opts, output_json_));
 
   PP.EnterMainSourceFile();
   clang::Token Tok;
@@ -450,22 +453,23 @@ void MacroAction::ExecuteAction() {
 }
 
 void remove_enabled_macros(Json::Value &output_json) {
-  for (const string &file_name : output_json.getMemberNames()) {
+  for (const std::string &file_name : output_json.getMemberNames()) {
     if (!output_json[file_name].isMember("macros")) { continue; }
 
     Json::Value &enabled_macros = output_json[file_name]["macros"];
     Json::Value &disabled_macros = output_json[file_name]["disabled_macros"];
 
-    for (const string &macro_name : disabled_macros.getMemberNames()) {
+    for (const std::string &macro_name : disabled_macros.getMemberNames()) {
       if (!enabled_macros.isMember(macro_name)) { continue; }
-      const string &enabled_def = enabled_macros[macro_name]["code"].asString();
+      const std::string &enabled_def =
+          enabled_macros[macro_name]["code"].asString();
 
       Json::Value &disabled_defs = disabled_macros[macro_name];
 
       Json::Value remained = Json::Value(Json::arrayValue);
 
       for (const Json::Value &disabled_def : disabled_defs) {
-        const string disabled_str = disabled_def["code"].asString();
+        const std::string disabled_str = disabled_def["code"].asString();
 
         if (disabled_str == enabled_def) { continue; }
         remained.append(disabled_def);
@@ -476,7 +480,7 @@ void remove_enabled_macros(Json::Value &output_json) {
 
     Json::Value remained = Json::Value(Json::objectValue);
 
-    for (const string &macro_name : disabled_macros.getMemberNames()) {
+    for (const std::string &macro_name : disabled_macros.getMemberNames()) {
       Json::Value &disabled_defs = disabled_macros[macro_name];
       if (disabled_defs.size() == 0) { continue; }
       remained[macro_name] = disabled_defs;
@@ -498,12 +502,12 @@ int main(int argc, const char **argv) {
     return 1;
   }
 
-  const string src_path = argv[1];
-  const char  *output_filename = argv[2];
+  const std::string src_path = argv[1];
+  const char       *output_filename = argv[2];
 
-  const vector<string> compile_args = get_compile_args(argc, argv);
+  const std::vector<std::string> compile_args = get_compile_args(argc, argv);
 
-  ifstream src_file(src_path);
+  std::ifstream src_file(src_path);
 
   if (!src_file.is_open()) {
     std::cerr << "Error: could not open source file " << src_path << "\n";
@@ -512,21 +516,21 @@ int main(int argc, const char **argv) {
 
   Json::Value output_json;
 
-  stringstream src_buffer;
+  std::stringstream src_buffer;
   src_buffer << src_file.rdbuf();
   src_file.close();
 
   clang::tooling::runToolOnCodeWithArgs(
-      make_unique<AllSrcFrontendAction>(output_json), src_buffer.str(),
+      std::make_unique<AllSrcFrontendAction>(output_json), src_buffer.str(),
       compile_args, src_path);
 
-  clang::tooling::runToolOnCodeWithArgs(make_unique<MacroAction>(output_json),
-                                        src_buffer.str(), compile_args,
-                                        src_path);
+  clang::tooling::runToolOnCodeWithArgs(
+      std::make_unique<MacroAction>(output_json), src_buffer.str(),
+      compile_args, src_path);
 
   remove_enabled_macros(output_json);
 
-  ofstream output_file(output_filename);
+  std::ofstream output_file(output_filename);
   if (!output_file.is_open()) {
     std::cerr << "Error: could not open output file " << output_filename
               << "\n";

@@ -6,8 +6,6 @@
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/FrontendAction.h"
 
-using namespace std;
-
 class ParseASTConsumer : public clang::ASTConsumer {
  public:
   explicit ParseASTConsumer(clang::SourceManager &src_manager,
@@ -27,7 +25,7 @@ class ParseFrontendAction : public clang::ASTFrontendAction {
  public:
   ParseFrontendAction(Json::Value &output_json);
 
-  unique_ptr<clang::ASTConsumer> CreateASTConsumer(
+  std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(
       clang::CompilerInstance &CI, llvm::StringRef InFile) override;
 
   void ExecuteAction() override;

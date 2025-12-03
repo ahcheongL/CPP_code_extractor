@@ -6,8 +6,6 @@
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/FrontendAction.h"
 
-using namespace std;
-
 class AllSrcVisitor : public clang::RecursiveASTVisitor<AllSrcVisitor> {
  public:
   explicit AllSrcVisitor(clang::SourceManager &src_manager,
@@ -42,7 +40,7 @@ class AllSrcFrontendAction : public clang::ASTFrontendAction {
  public:
   AllSrcFrontendAction(Json::Value &output_json);
 
-  unique_ptr<clang::ASTConsumer> CreateASTConsumer(
+  std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(
       clang::CompilerInstance &CI, llvm::StringRef InFile) override;
 
   void ExecuteAction() override;

@@ -26,7 +26,7 @@ FuncSrcVisitor::FuncSrcVisitor(clang::SourceManager &src_manager,
 bool FuncSrcVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
   if (!FuncDecl->isThisDeclarationADefinition()) { return true; }
 
-  string func_name = FuncDecl->getNameInfo().getName().getAsString();
+  std::string func_name = FuncDecl->getNameInfo().getName().getAsString();
 
   if (func_name != target_func_) { return true; }
 
@@ -42,7 +42,7 @@ bool FuncSrcVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
   clang::SourceLocation end_loc = FuncDecl->getEndLoc();
   clang::SourceRange    range(start_loc, end_loc);
 
-  const string src_code =
+  const std::string src_code =
       clang::Lexer::getSourceText(clang::CharSourceRange::getTokenRange(range),
                                   src_manager_, lang_opts_)
           .str();
@@ -74,7 +74,7 @@ void FuncSrcASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
 FuncSrcFrontendAction::FuncSrcFrontendAction(const char *target_func)
     : target_func_(target_func) {
 }
-unique_ptr<clang::ASTConsumer> FuncSrcFrontendAction::CreateASTConsumer(
+std::unique_ptr<clang::ASTConsumer> FuncSrcFrontendAction::CreateASTConsumer(
     clang::CompilerInstance &CI, llvm::StringRef InFile) {
   clang::SourceManager &source_manager = CI.getSourceManager();
   const clang::FileID   main_file_id = source_manager.getMainFileID();
@@ -92,8 +92,8 @@ unique_ptr<clang::ASTConsumer> FuncSrcFrontendAction::CreateASTConsumer(
 
   clang::LangOptions &lang_opts = CI.getLangOpts();
 
-  return make_unique<FuncSrcASTConsumer>(source_manager, lang_opts,
-                                         main_file_name, target_func_);
+  return std::make_unique<FuncSrcASTConsumer>(source_manager, lang_opts,
+                                              main_file_name, target_func_);
 }
 
 void FuncSrcFrontendAction::ExecuteAction() {
@@ -112,24 +112,24 @@ int main(int argc, const char **argv) {
     return 1;
   }
 
-  const string src_path = argv[1];
-  const char  *func_name = argv[2];
+  const std::string src_path = argv[1];
+  const char       *func_name = argv[2];
 
-  const vector<string> compile_args = get_compile_args(argc, argv);
+  const std::vector<std::string> compile_args = get_compile_args(argc, argv);
 
-  ifstream src_file(src_path);
+  std::ifstream src_file(src_path);
 
   if (!src_file.is_open()) {
     std::cerr << "Error: could not open source file " << src_path << "\n";
     return 1;
   }
 
-  stringstream src_buffer;
+  std::stringstream src_buffer;
   src_buffer << src_file.rdbuf();
   src_file.close();
 
   clang::tooling::runToolOnCodeWithArgs(
-      make_unique<FuncSrcFrontendAction>(func_name), src_buffer.str(),
+      std::make_unique<FuncSrcFrontendAction>(func_name), src_buffer.str(),
       compile_args, src_path);
 
   return 0;

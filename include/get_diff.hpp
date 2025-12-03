@@ -3,8 +3,6 @@
 
 #include "clang/Tooling/ASTDiff/ASTDiff.h"
 
-using namespace std;
-
 bool get_diff(clang::diff::SyntaxTree &ST1, clang::diff::SyntaxTree &ST2);
 
 #endif

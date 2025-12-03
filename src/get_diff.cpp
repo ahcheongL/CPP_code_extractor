@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <sstream>
 
 #include "clang/Basic/DiagnosticOptions.h"
@@ -28,8 +29,8 @@ class DummyConsumer : public clang::ASTConsumer {
   }
 };
 
-unique_ptr<clang::CompilerInstance> createCompilerInstance(
-    const string &filename, const vector<string> &args) {
+std::unique_ptr<clang::CompilerInstance> createCompilerInstance(
+    const std::string &filename, const std::vector<std::string> &args) {
   clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagOpts =
       new clang::DiagnosticOptions();
 
@@ -43,14 +44,14 @@ unique_ptr<clang::CompilerInstance> createCompilerInstance(
       clang::CompilerInstance::createDiagnostics(*vfs, diagOpts.get(),
                                                  diagPrinter);
 
-  vector<const char *> cstr_args{};
+  std::vector<const char *> cstr_args{};
   for (const auto &arg : args) {
     cstr_args.push_back(arg.c_str());
   }
   cstr_args.push_back(filename.c_str());
 
   // Create compiler invocation from args
-  auto invocation = make_shared<clang::CompilerInvocation>();
+  auto invocation = std::make_shared<clang::CompilerInvocation>();
   bool success = clang::CompilerInvocation::CreateFromArgs(
       *invocation, cstr_args, *diags, "clang");
 
@@ -60,7 +61,7 @@ unique_ptr<clang::CompilerInstance> createCompilerInstance(
     return nullptr;
   }
 
-  auto CI = make_unique<clang::CompilerInstance>();
+  auto CI = std::make_unique<clang::CompilerInstance>();
   CI->setInvocation(invocation);
   CI->setDiagnostics(diags.get());
 
@@ -82,8 +83,8 @@ unique_ptr<clang::CompilerInstance> createCompilerInstance(
 
   source_manager.setMainFileID(main_file_id);
 
-  shared_ptr<clang::TargetOptions> target_options =
-      make_shared<clang::TargetOptions>();
+  std::shared_ptr<clang::TargetOptions> target_options =
+      std::make_shared<clang::TargetOptions>();
   target_options->Triple = llvm::sys::getDefaultTargetTriple();
   clang::TargetInfo *target_info =
       clang::TargetInfo::CreateTargetInfo(*diags, target_options);
@@ -129,19 +130,20 @@ bool get_diff(clang::diff::SyntaxTree &ST1, clang::diff::SyntaxTree &ST2) {
 
 int main(int argc, const char **argv) {
   if (argc < 4) {
-    cerr << "Usage: " << argv[0]
-         << " <source-file1> <source-file2> <output.txt> -- [<compile args> "
-            "...]\n";
-    cerr << "Assumes both source files uses the same "
-            "compile arguments.\n";
+    std::cerr
+        << "Usage: " << argv[0]
+        << " <source-file1> <source-file2> <output.txt> -- [<compile args> "
+           "...]\n";
+    std::cerr << "Assumes both source files uses the same "
+                 "compile arguments.\n";
     return 1;
   }
 
-  const string src_path1 = argv[1];
-  const string src_path2 = argv[2];
-  const char  *output_filename = argv[3];
+  const std::string src_path1 = argv[1];
+  const std::string src_path2 = argv[2];
+  const char       *output_filename = argv[3];
 
-  const vector<string> compile_args = get_compile_args(argc, argv);
+  const std::vector<std::string> compile_args = get_compile_args(argc, argv);
 
   auto CI1 = createCompilerInstance(src_path1, compile_args);
   auto CI2 = createCompilerInstance(src_path2, compile_args);
@@ -154,9 +156,10 @@ int main(int argc, const char **argv) {
 
   const bool has_diff = get_diff(ST1, ST2);
 
-  ofstream output_file(output_filename);
+  std::ofstream output_file(output_filename);
   if (!output_file.is_open()) {
-    cerr << "Error: could not open output file " << output_filename << "\n";
+    std::cerr << "Error: could not open output file " << output_filename
+              << "\n";
     return 1;
   }
 

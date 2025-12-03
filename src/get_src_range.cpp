@@ -26,11 +26,11 @@ SrcRangeVisitor::SrcRangeVisitor(clang::SourceManager &src_manager,
 bool SrcRangeVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
   if (!FuncDecl->isThisDeclarationADefinition()) { return true; }
 
-  string func_name = FuncDecl->getNameInfo().getName().getAsString();
+  std::string func_name = FuncDecl->getNameInfo().getName().getAsString();
 
   clang::SourceLocation loc = FuncDecl->getLocation();
   llvm::StringRef       file_name = src_manager_.getFilename(loc);
-  const string          file_path = get_abs_path(file_name.str());
+  const std::string     file_path = get_abs_path(file_name.str());
 
   if (file_path.empty()) {
     // Skip if the file path is empty
@@ -88,7 +88,7 @@ SrcRangeFrontendAction::SrcRangeFrontendAction(Json::Value &output_json)
     : output_json_(output_json) {
 }
 
-unique_ptr<clang::ASTConsumer> SrcRangeFrontendAction::CreateASTConsumer(
+std::unique_ptr<clang::ASTConsumer> SrcRangeFrontendAction::CreateASTConsumer(
     clang::CompilerInstance &CI, llvm::StringRef InFile) {
   clang::SourceManager &source_manager = CI.getSourceManager();
   const clang::FileID   main_file_id = source_manager.getMainFileID();
@@ -106,8 +106,8 @@ unique_ptr<clang::ASTConsumer> SrcRangeFrontendAction::CreateASTConsumer(
 
   clang::LangOptions &lang_opts = CI.getLangOpts();
 
-  return make_unique<SrcRangeASTConsumer>(source_manager, lang_opts,
-                                          main_file_name, output_json_);
+  return std::make_unique<SrcRangeASTConsumer>(source_manager, lang_opts,
+                                               main_file_name, output_json_);
 }
 
 void SrcRangeFrontendAction::ExecuteAction() {
@@ -126,12 +126,12 @@ int main(int argc, const char **argv) {
     return 1;
   }
 
-  const string src_path = argv[1];
-  const char  *out_json = argv[2];
+  const std::string src_path = argv[1];
+  const char       *out_json = argv[2];
 
-  const vector<string> compile_args = get_compile_args(argc, argv);
+  const std::vector<std::string> compile_args = get_compile_args(argc, argv);
 
-  ifstream src_file(src_path);
+  std::ifstream src_file(src_path);
 
   if (!src_file.is_open()) {
     std::cerr << "Error: could not open source file " << src_path << "\n";
@@ -140,15 +140,15 @@ int main(int argc, const char **argv) {
 
   Json::Value output_json;
 
-  stringstream src_buffer;
+  std::stringstream src_buffer;
   src_buffer << src_file.rdbuf();
   src_file.close();
 
   clang::tooling::runToolOnCodeWithArgs(
-      make_unique<SrcRangeFrontendAction>(output_json), src_buffer.str(),
+      std::make_unique<SrcRangeFrontendAction>(output_json), src_buffer.str(),
       compile_args, src_path);
 
-  ofstream output_file(out_json);
+  std::ofstream output_file(out_json);
   if (!output_file.is_open()) {
     std::cerr << "Error: could not open output file " << out_json << "\n";
     return 1;

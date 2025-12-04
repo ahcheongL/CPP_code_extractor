@@ -5,8 +5,6 @@
 
 #include <iostream>
 
-static void add_system_include_paths(std::vector<std::string> &compile_args);
-
 // Assume argv contains "--" followed by compile arguments
 // If it does not, return an empty std::vector
 std::vector<std::string> get_compile_args(int argc, const char **argv) {
@@ -32,14 +30,16 @@ std::vector<std::string> get_compile_args(int argc, const char **argv) {
   return result;
 }
 
-static std::vector<std::string> system_include_dirs;
+static const std::vector<std::string> &get_system_include_dirs() {
+  static std::vector<std::string> system_include_dirs;
 
-static void get_system_include_dirs() {
+  if (!system_include_dirs.empty()) { return system_include_dirs; }
+
   const char *cmd = "clang -E -x c++ - -v < /dev/null 2>&1";
   FILE       *fp = popen(cmd, "r");
   if (fp == NULL) {
     std::cerr << "Error: could not run command: " << cmd << "\n";
-    return;
+    return system_include_dirs;
   }
 
   char buffer[256];
@@ -77,15 +77,16 @@ static void get_system_include_dirs() {
     }
   }
   pclose(fp);
-  return;
+  return system_include_dirs;
 }
 
 // Execute clang and get the system include paths
 // and add them to the compile args
-static void add_system_include_paths(std::vector<std::string> &compile_args) {
-  get_system_include_dirs();
+void add_system_include_paths(std::vector<std::string> &compile_args) {
+  const std::vector<std::string> &system_include_dirs =
+      get_system_include_dirs();
 
-  for (const auto &dir : system_include_dirs) {
+  for (const std::string &dir : system_include_dirs) {
     compile_args.push_back("-isystem");
     compile_args.push_back(dir);
   }
@@ -94,16 +95,17 @@ static void add_system_include_paths(std::vector<std::string> &compile_args) {
 }
 
 bool is_system_file(const std::string &file_path) {
-  if (system_include_dirs.empty()) { get_system_include_dirs(); }
+  const std::vector<std::string> &system_include_dirs =
+      get_system_include_dirs();
 
-  for (const auto &dir : system_include_dirs) {
+  for (const std::string &dir : system_include_dirs) {
     if (file_path.find(dir) == 0) { return true; }
   }
 
   return false;
 }
 
-std::string get_abs_path(const std::string &file_path) {
+std::string get_canonical_abs_path(const std::string &file_path) {
   if (file_path == "") { return ""; }
   char abs_path[PATH_MAX];
   if (realpath(file_path.c_str(), abs_path) == nullptr) {
@@ -121,6 +123,29 @@ std::string strip(const std::string &s) {
 }
 
 bool ends_with(const std::string &s, const std::string &suffix) {
-  if (s.size() < suffix.size()) return false;
-  return s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0;
+  const size_t str_size = s.size();
+  const size_t suffix_size = suffix.size();
+  if (str_size < suffix_size) return false;
+  return s.compare(str_size - suffix_size, suffix_size, suffix) == 0;
+}
+
+std::vector<std::string> tokenize_command(const std::string &command) {
+  std::vector<std::string> tokens;
+  size_t                   pos = 0;
+  size_t                   space_pos = command.find(' ');
+
+  while (space_pos != std::string::npos) {
+    std::string token = command.substr(pos, space_pos - pos);
+    tokens.push_back(token);
+    pos = space_pos + 1;
+    space_pos = command.find(' ', pos);
+  }
+
+  // last token
+  if (pos < command.length()) {
+    std::string token = command.substr(pos);
+    tokens.push_back(token);
+  }
+
+  return tokens;
 }

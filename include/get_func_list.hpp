@@ -8,8 +8,9 @@
 class FunctionVisitor : public clang::RecursiveASTVisitor<FunctionVisitor> {
  public:
   explicit FunctionVisitor(clang::SourceManager &src_manager,
-                           llvm::StringRef       src_path);
-
+                           llvm::StringRef       src_path)
+      : src_manager_(src_manager), src_path_(src_path) {
+  }
   bool VisitFunctionDecl(clang::FunctionDecl *FuncDecl);
 
  private:
@@ -20,7 +21,9 @@ class FunctionVisitor : public clang::RecursiveASTVisitor<FunctionVisitor> {
 class FunctionASTConsumer : public clang::ASTConsumer {
  public:
   explicit FunctionASTConsumer(clang::SourceManager &src_manager,
-                               llvm::StringRef       src_path);
+                               llvm::StringRef       src_path)
+      : Visitor(src_manager, src_path) {
+  }
 
   void HandleTranslationUnit(clang::ASTContext &Context) override;
 

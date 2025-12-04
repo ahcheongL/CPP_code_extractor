@@ -11,12 +11,6 @@
 ///////////////////////
 // FunctionVisitor class
 ////////////////////////
-
-FunctionVisitor::FunctionVisitor(clang::SourceManager &src_manager,
-                                 llvm::StringRef       src_path)
-    : src_manager_(src_manager), src_path_(src_path) {
-}
-
 bool FunctionVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
 #if PRINT_DEBUG == 1
   std::cerr << "Visiting function "
@@ -45,12 +39,6 @@ bool FunctionVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
 ////////////////////////
 // FunctionASTConsumer class
 ////////////////////////
-
-FunctionASTConsumer::FunctionASTConsumer(clang::SourceManager &src_manager,
-                                         llvm::StringRef       src_path)
-    : Visitor(src_manager, src_path) {
-}
-
 void FunctionASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
   Visitor.TraverseDecl(Context.getTranslationUnitDecl());
 }

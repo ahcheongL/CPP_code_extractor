@@ -1,16 +1,20 @@
-#ifndef GET_ALL_SRC_HPP
-#define GET_ALL_SRC_HPP
-#include <jsoncpp/json/json.h>
+#ifndef GEN_CODE_DATA_HPP
+#define GEN_CODE_DATA_HPP
 
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/FrontendAction.h"
+#include "jsoncpp/json/json.h"
 
-class AllSrcVisitor : public clang::RecursiveASTVisitor<AllSrcVisitor> {
+class CodeDataVisitor : public clang::RecursiveASTVisitor<CodeDataVisitor> {
  public:
-  explicit AllSrcVisitor(clang::SourceManager &src_manager,
-                         clang::LangOptions   &lang_opts,
-                         Json::Value          &output_json);
+  explicit CodeDataVisitor(clang::SourceManager &src_manager,
+                           clang::LangOptions   &lang_opts,
+                           Json::Value          &output_json)
+      : src_manager_(src_manager),
+        lang_opts_(lang_opts),
+        output_json_(output_json) {
+  }
 
   bool VisitFunctionDecl(clang::FunctionDecl *FuncDecl);
   bool VisitVarDecl(clang::VarDecl *VarDecl);
@@ -24,21 +28,24 @@ class AllSrcVisitor : public clang::RecursiveASTVisitor<AllSrcVisitor> {
   Json::Value          &output_json_;
 };
 
-class AllSrcASTConsumer : public clang::ASTConsumer {
+class CodeDataASTConsumer : public clang::ASTConsumer {
  public:
-  explicit AllSrcASTConsumer(clang::SourceManager &src_manager,
-                             clang::LangOptions   &lang_opts,
-                             Json::Value          &output_json);
+  explicit CodeDataASTConsumer(clang::SourceManager &src_manager,
+                               clang::LangOptions   &lang_opts,
+                               Json::Value          &output_json)
+      : Visitor(src_manager, lang_opts, output_json) {
+  }
 
   void HandleTranslationUnit(clang::ASTContext &Context) override;
 
  private:
-  AllSrcVisitor Visitor;
+  CodeDataVisitor Visitor;
 };
 
-class AllSrcFrontendAction : public clang::ASTFrontendAction {
+class CodeDataFrontendAction : public clang::ASTFrontendAction {
  public:
-  AllSrcFrontendAction(Json::Value &output_json);
+  CodeDataFrontendAction(Json::Value &output_json)
+      : output_json_(output_json) {};
 
   std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(
       clang::CompilerInstance &CI, llvm::StringRef InFile) override;
@@ -70,6 +77,8 @@ class MacroAction : public clang::PreprocessorFrontendAction {
   void ExecuteAction() override;
 
  private:
+  void remove_enabled_macros();
+
   Json::Value &output_json_;
 };
 

@@ -125,8 +125,6 @@ def main(argv):
         except json.JSONDecodeError:
             continue
         
-        with open("/ssd_home/yeongbin/lasik/misrac_subjects/littlefs/debug.json", "w") as f:
-            json.dump(src_defs, f, indent=4)
 
         if src_defs is None:
             src_defs = dict()

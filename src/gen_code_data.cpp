@@ -143,7 +143,206 @@ bool CodeDataVisitor::VisitFunctionDecl(clang::FunctionDecl *FuncDecl) {
   func_entry["definition"] = src_code;
   func_entry["start_line"] = start_line_no;
   func_entry["end_line"] = end_line_no;
+
+  construct_callgraph(FuncDecl, func_entry);
   return true;
+}
+
+void CodeDataVisitor::construct_callgraph(clang::FunctionDecl *FuncDecl,
+                                          Json::Value         &func_entry) {
+  clang::CallGraphNode *node = CG_.getOrInsertNode(FuncDecl);
+  if (node == nullptr) { return; }
+
+  const std::string func_name = FuncDecl->getNameInfo().getName().getAsString();
+  for (clang::CallGraphNode::CallRecord callee : node->callees()) {
+    clang::Expr *callee_expr = callee.CallExpr;
+    if (callee_expr == nullptr) { continue; }
+
+    // Callexpr
+    if (clang::isa<clang::CallExpr>(callee_expr)) {
+      clang::CallExpr *call_expr = clang::cast<clang::CallExpr>(callee_expr);
+      clang::FunctionDecl *callee_func =
+          call_expr->getDirectCallee();  // Get the callee function
+
+      if (callee_func == nullptr) {
+        llvm::outs() << "Skip indirect call expression : ";
+        callee_expr->printPretty(llvm::outs(), nullptr, lang_opts_);
+        llvm::outs() << "\n";
+        continue;
+      }
+
+      const std::string callee_name =
+          callee_func->getNameInfo().getName().getAsString();
+
+      if (callee_name.empty()) {
+        llvm::outs() << "Skip empty callee name in call expression : ";
+        callee_expr->printPretty(llvm::outs(), nullptr, lang_opts_);
+        llvm::outs() << "\n";
+        continue;
+      }
+
+      clang::SourceLocation callee_loc = callee_func->getBeginLoc();
+
+      if (callee_loc.isMacroID()) {
+        callee_loc = src_manager_.getSpellingLoc(callee_loc);
+      }
+
+      llvm::StringRef callee_file_name = src_manager_.getFilename(callee_loc);
+      if (is_system_file(callee_file_name.str())) {
+        // Skip system files
+        continue;
+      }
+
+      add_callee(func_name, callee_func, func_entry);
+      continue;
+    }
+
+    // Binary operator
+    if (clang::isa<clang::BinaryOperator>(callee_expr)) {
+      clang::BinaryOperator *bin_op =
+          clang::cast<clang::BinaryOperator>(callee_expr);
+
+      clang::BinaryOperatorKind bin_op_kind = bin_op->getOpcode();
+
+      llvm::outs() << "Skip binary operator in call expression : "
+                   << clang::BinaryOperator::getOpcodeStr(bin_op_kind)
+                   << " in function: " << func_name << ", Callee: ";
+      callee_expr->printPretty(llvm::outs(), nullptr, lang_opts_);
+      llvm::outs() << "\n";
+      continue;
+    }
+
+    // CXXConstructExpr
+    if (clang::isa<clang::CXXConstructExpr>(callee_expr)) {
+      clang::CXXConstructExpr *cxx_construct_expr =
+          clang::cast<clang::CXXConstructExpr>(callee_expr);
+
+      clang::CXXConstructorDecl *ctor_decl =
+          cxx_construct_expr->getConstructor();
+
+      if (ctor_decl == nullptr) {
+        llvm::outs() << "Skip null constructor in call expression : ";
+        callee_expr->printPretty(llvm::outs(), nullptr, lang_opts_);
+        llvm::outs() << "\n";
+        continue;
+      }
+
+      const std::string callee_name =
+          ctor_decl->getNameInfo().getName().getAsString();
+
+      if (callee_name.empty()) {
+        llvm::outs() << "Skip empty callee name in CXXConstructExpr : ";
+        callee_expr->printPretty(llvm::outs(), nullptr, lang_opts_);
+        llvm::outs() << "\n";
+        continue;
+      }
+
+      const clang::SourceLocation callee_loc = callee_expr->getBeginLoc();
+      llvm::StringRef callee_file_name = src_manager_.getFilename(callee_loc);
+      if (is_system_file(callee_file_name.str())) {
+        // Skip system files
+        continue;
+      }
+
+      add_callee(func_name, ctor_decl, func_entry);
+      continue;
+    }
+
+    // CXXMemberCallExpr
+    if (clang::isa<clang::CXXMemberCallExpr>(callee_expr)) {
+      clang::CXXMemberCallExpr *member_call_expr =
+          clang::cast<clang::CXXMemberCallExpr>(callee_expr);
+      clang::Expr *implicit_obj_arg =
+          member_call_expr->getImplicitObjectArgument();
+      if (implicit_obj_arg == nullptr) {
+        llvm::outs()
+            << "Skip null implicit object argument in CXXMemberCallExpr :";
+        callee_expr->printPretty(llvm::outs(), nullptr, lang_opts_);
+        llvm::outs() << "\n";
+        continue;
+      }
+      clang::CXXMethodDecl *method_decl =
+          member_call_expr->getMethodDecl();  // Get the method declaration
+      if (method_decl == nullptr) {
+        llvm::outs() << "Skip null method declaration in CXXMemberCallExpr : ";
+        callee_expr->printPretty(llvm::outs(), nullptr, lang_opts_);
+        llvm::outs() << "\n";
+        continue;
+      }
+      const std::string callee_name =
+          method_decl->getNameInfo().getName().getAsString();
+      if (callee_name.empty()) {
+        llvm::outs() << "Skip empty callee name in CXXMemberCallExpr :";
+        callee_expr->printPretty(llvm::outs(), nullptr, lang_opts_);
+        llvm::outs() << "\n";
+        continue;
+      }
+
+      const clang::SourceLocation callee_loc = callee_expr->getBeginLoc();
+      llvm::StringRef callee_file_name = src_manager_.getFilename(callee_loc);
+      if (is_system_file(callee_file_name.str())) {
+        // Skip system files
+        continue;
+      }
+
+      add_callee(func_name, method_decl, func_entry);
+      continue;
+    }
+
+    llvm::outs() << "else case : Function: " << func_name << ", Callee: ";
+    callee_expr->printPretty(llvm::outs(), nullptr, lang_opts_);
+    llvm::outs() << "\n";
+  }
+  return;
+}
+
+void CodeDataVisitor::add_callee(const std::string   &func_name,
+                                 clang::FunctionDecl *callee_decl,
+                                 Json::Value         &caller_entry) {
+  const std::string callee_name =
+      callee_decl->getNameInfo().getName().getAsString();
+
+  if (!caller_entry.isMember("callees")) {
+    caller_entry["callees"] = Json::Value(Json::arrayValue);
+  }
+
+  Json::Value &callees_array = caller_entry["callees"];
+
+  if (!contains_string(callees_array, callee_name)) {
+    callees_array.append(callee_name);
+  }
+
+  clang::FunctionDecl *callee_def = callee_decl->getDefinition();
+  if (callee_def == nullptr) { return; }
+
+  clang::SourceLocation loc = callee_def->getLocation();
+  llvm::StringRef       callee_file_name = src_manager_.getFilename(loc);
+  if (callee_file_name == "") { return; }
+
+  const std::string callee_file_path =
+      get_canonical_abs_path(callee_file_name.str());
+
+  if (is_system_file(callee_file_path)) { return; }
+
+  ensure_file_key(output_json_, callee_file_path);
+
+  collect_disabled_macros(output_json_, callee_file_path);
+
+  Json::Value &callee_file_entry = output_json_[callee_file_path];
+  Json::Value &functions_entry = callee_file_entry["functions"];
+
+  ensure_key(functions_entry, callee_name);
+
+  Json::Value &callee_entry = functions_entry[callee_name];
+
+  if (!callee_entry.isMember("callers")) {
+    callee_entry["callers"] = Json::Value(Json::arrayValue);
+  }
+
+  Json::Value &callers_array = callee_entry["callers"];
+  if (contains_string(callers_array, func_name)) { return; }
+  callee_entry["callers"].append(func_name);
+  return;
 }
 
 bool CodeDataVisitor::VisitVarDecl(clang::VarDecl *VarDecl) {
@@ -187,21 +386,23 @@ bool CodeDataVisitor::VisitVarDecl(clang::VarDecl *VarDecl) {
     clang::FunctionDecl *func_decl =
         clang::dyn_cast<clang::FunctionDecl>(decl_ctxt);
 
-    if (func_decl != nullptr) {
-      Json::Value      &functions_entry = output_json_[file_path]["functions"];
-      const std::string func_name =
-          func_decl->getNameInfo().getName().getAsString();
+    if (func_decl == nullptr) { return true; }
 
-      ensure_key(functions_entry, func_name);
-      Json::Value &func_entry = functions_entry[func_name];
-      ensure_key(func_entry, "variables");
-      Json::Value &variables_entry = func_entry["variables"];
-      ensure_key(variables_entry, var_name);
-      Json::Value &var_entry = variables_entry[var_name];
-      var_entry["definition"] = src_code;
-      var_entry["start_line"] = start_line_no;
-      var_entry["end_line"] = end_line_no;
-    }
+    if (!func_decl->isThisDeclarationADefinition()) { return true; }
+
+    Json::Value      &functions_entry = output_json_[file_path]["functions"];
+    const std::string func_name =
+        func_decl->getNameInfo().getName().getAsString();
+
+    ensure_key(functions_entry, func_name);
+    Json::Value &func_entry = functions_entry[func_name];
+    ensure_key(func_entry, "variables");
+    Json::Value &variables_entry = func_entry["variables"];
+    ensure_key(variables_entry, var_name);
+    Json::Value &var_entry = variables_entry[var_name];
+    var_entry["definition"] = src_code;
+    var_entry["start_line"] = start_line_no;
+    var_entry["end_line"] = end_line_no;
     return true;
   }
 
@@ -358,7 +559,9 @@ bool CodeDataVisitor::VisitEnumDecl(clang::EnumDecl *EnumDecl) {
 // CodeDataASTConsumer class
 // ////////////////////////
 void CodeDataASTConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
-  Visitor.TraverseDecl(Context.getTranslationUnitDecl());
+  clang::TranslationUnitDecl *tu_decl = Context.getTranslationUnitDecl();
+  CG_.addToCallGraph(tu_decl);
+  Visitor.TraverseDecl(tu_decl);
 }
 
 // ////////////////////////

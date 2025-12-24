@@ -50,3 +50,10 @@ void add_list(Json::Value &root, const std::vector<std::string> &keys,
   }
   (*current)[last_key].append(Json::Value(value));
 }
+
+bool contains_string(const Json::Value &array, const std::string &value) {
+  for (const Json::Value &item : array) {
+    if (item.asString() == value) { return true; }
+  }
+  return false;
+}

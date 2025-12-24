@@ -10,4 +10,6 @@ void add_object(Json::Value &root, const std::vector<std::string> &keys,
 void add_list(Json::Value &root, const std::vector<std::string> &keys,
               const Json::Value &value);
 
+bool contains_string(const Json::Value &array, const std::string &value);
+
 #endif

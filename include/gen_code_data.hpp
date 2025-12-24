@@ -3,6 +3,7 @@
 
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/RecursiveASTVisitor.h"
+#include "clang/Analysis/CallGraph.h"
 #include "clang/Frontend/FrontendAction.h"
 #include "jsoncpp/json/json.h"
 
@@ -10,10 +11,11 @@ class CodeDataVisitor : public clang::RecursiveASTVisitor<CodeDataVisitor> {
  public:
   explicit CodeDataVisitor(clang::SourceManager &src_manager,
                            clang::LangOptions   &lang_opts,
-                           Json::Value          &output_json)
+                           Json::Value &output_json, clang::CallGraph &CG)
       : src_manager_(src_manager),
         lang_opts_(lang_opts),
-        output_json_(output_json) {
+        output_json_(output_json),
+        CG_(CG) {
   }
 
   bool VisitFunctionDecl(clang::FunctionDecl *FuncDecl);
@@ -23,9 +25,15 @@ class CodeDataVisitor : public clang::RecursiveASTVisitor<CodeDataVisitor> {
   bool VisitEnumDecl(clang::EnumDecl *EnumDecl);
 
  private:
+  void construct_callgraph(clang::FunctionDecl *FuncDecl,
+                           Json::Value         &func_entry);
+  void add_callee(const std::string   &func_name,
+                  clang::FunctionDecl *callee_decl, Json::Value &caller_entry);
+
   clang::SourceManager &src_manager_;
   clang::LangOptions   &lang_opts_;
   Json::Value          &output_json_;
+  clang::CallGraph     &CG_;
 };
 
 class CodeDataASTConsumer : public clang::ASTConsumer {
@@ -33,13 +41,14 @@ class CodeDataASTConsumer : public clang::ASTConsumer {
   explicit CodeDataASTConsumer(clang::SourceManager &src_manager,
                                clang::LangOptions   &lang_opts,
                                Json::Value          &output_json)
-      : Visitor(src_manager, lang_opts, output_json) {
+      : Visitor(src_manager, lang_opts, output_json, CG_) {
   }
 
   void HandleTranslationUnit(clang::ASTContext &Context) override;
 
  private:
-  CodeDataVisitor Visitor;
+  CodeDataVisitor  Visitor;
+  clang::CallGraph CG_;
 };
 
 class CodeDataFrontendAction : public clang::ASTFrontendAction {

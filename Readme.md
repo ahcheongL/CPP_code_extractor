@@ -55,7 +55,7 @@ The json file structure is as follows:
         "definition": "<source_code>",
         "start_line": <start_line>,
         "end_line": <end_line>,
-        "calls": [ "<called_func_name1>", "<called_func_name2>", ... ],
+        "callees": [ "<called_func_name1>", "<called_func_name2>", ... ],
         "callers": [ "<caller_func_name1>", "<caller_func_name2>", ... ],
         "variables": {
             "<var_name1>": {

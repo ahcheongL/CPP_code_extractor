@@ -1,6 +1,7 @@
 #include "gen_code_data.hpp"
 
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <regex>
@@ -13,6 +14,8 @@
 #include "clang/Tooling/Tooling.h"
 #include "cpp_code_extractor_util.hpp"
 #include "json_utils.hpp"
+
+namespace fs = std::filesystem;
 
 static std::string get_macro_name(const std::string &line) {
   size_t pos = line.find("define");
@@ -818,6 +821,8 @@ int32_t main(int32_t argc, const char **argv) {
     return 1;
   }
 
+  fs::path cwd = fs::current_path();
+
   Json::Value output_json;
 
   for (const CompileCommand &cmd : commands) {
@@ -835,6 +840,8 @@ int32_t main(int32_t argc, const char **argv) {
 
     const std::string src_code = src_buffer.str();
 
+    fs::current_path(cmd.working_dir_);
+
     clang::tooling::runToolOnCodeWithArgs(
         std::make_unique<CodeDataFrontendAction>(output_json), src_code,
         compile_args, src_path);
@@ -843,6 +850,8 @@ int32_t main(int32_t argc, const char **argv) {
         std::make_unique<MacroAction>(output_json), src_code, compile_args,
         src_path);
   }
+
+  fs::current_path(cwd);
 
   write_output(output_filename, output_json);
   return 0;

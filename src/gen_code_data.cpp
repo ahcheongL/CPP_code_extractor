@@ -834,6 +834,13 @@ int32_t main(int32_t argc, const char **argv) {
       continue;
     }
 
+    const std::string &working_dir = cmd.working_dir_;
+    if (!fs::exists(working_dir)) {
+      std::cerr << "Warning: working directory does not exist: " << working_dir
+                << "for source file: " << src_path << "\n";
+      continue;
+    }
+
     std::stringstream src_buffer;
     src_buffer << src_file.rdbuf();
     src_file.close();

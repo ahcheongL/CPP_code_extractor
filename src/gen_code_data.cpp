@@ -772,6 +772,9 @@ static std::vector<CompileCommand> read_compile_commands(
 
     commands_vec.erase(commands_vec.begin() + src_index);
 
+    auto c_index = std::find(commands_vec.begin(), commands_vec.end(), "-c");
+    if (c_index != commands_vec.end()) { commands_vec.erase(c_index); }
+
     add_system_include_paths(commands_vec);
 
     if (src_path[0] != '/') { src_path = working_dir + "/" + src_path; }

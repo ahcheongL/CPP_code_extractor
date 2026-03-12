@@ -29,7 +29,7 @@ endif
 
 CLANG_LIBS = -lclang-cpp
 
-LLVM_LDFLAGS := `llvm-config --ldflags` $(CLANG_LIBS) -Wl,-rpath,$(shell llvm-config --libdir)
+LLVM_LDFLAGS := `llvm-config --ldflags` $(CLANG_LIBS) -Wl,-rpath,$(shell llvm-config --libdir) -fuse-ld=lld
 
 SRCS := $(wildcard src/*/*.cpp)
 DEPS := $(patsubst src/%.cpp, build/%.d, $(SRCS))

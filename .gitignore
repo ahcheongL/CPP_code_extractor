@@ -55,3 +55,6 @@ dkms.conf
 build/
 __pycache__/
 *.swp
+
+.cache/
+compile_commands.json

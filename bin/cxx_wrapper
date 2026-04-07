@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 
-import os, sys
+import os
 import shutil
 import subprocess
+import sys
 import time
 
 UNSUPPORTED_COMPILER_ARGUMENTS = [
     "-fcallgraph-info",
     "-ftrack-macro-expansion",
 ]
+
 
 def is_executable(path):
     if shutil.which(path):
@@ -28,7 +30,7 @@ def write_args_to_file(args):
         try:
             f1 = open(output_path, "a")
             opened = True
-        except:
+        except Exception as _e:
             time.sleep(0.1)
     cwd = os.getcwd()
 
@@ -72,7 +74,7 @@ def main(argv):
                 break
         if is_supported_argument:
             filtered_argv.append(arg)
-    filtered_argv = [cc] + filtered_argv
+    filtered_argv = [cxx] + filtered_argv
 
     process = subprocess.run(filtered_argv)
     return process.returncode

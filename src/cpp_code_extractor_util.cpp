@@ -102,6 +102,11 @@ bool is_system_file(const std::string &file_path) {
     if (file_path.find(dir) == 0) { return true; }
   }
 
+  if (file_path.find("include/clang/") != std::string::npos) { return true; }
+
+  if (file_path.find("include/llvm/") != std::string::npos) { return true; }
+
+  if (file_path.find("include/llvm-c/") != std::string::npos) { return true; }
   return false;
 }
 
